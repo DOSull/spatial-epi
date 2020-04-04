@@ -1,0 +1,84 @@
+```{r}
+library(sf)
+library(tmap)
+library(dplyr)
+library(dbscan)
+library(igraph)
+library(ggplot2)
+```
+
+```{r}
+setwd("~/Documents/code/spatial-epi/geo")
+```
+
+Load roads
+```{r}
+roads <- st_read("data/SI-roads.shp")
+```
+
+Load populated places
+```{r}
+pop_places <- st_read("data/south-island-populated-places-points.shp")
+```
+
+Add x y cooridnates and convert population to an integer (it's a string in the shapefile)
+```{r}
+xy <- st_coordinates(pop_places)
+pop_places.m <- pop_places %>%
+  mutate(x = xy[, 1],
+         y = xy[, 2],
+         pop = as.integer(as.character(pop)))
+```
+
+Make an attribute only data table from the pop places
+```{r}
+pop_places.id <- pop_places.m %>%
+  st_drop_geometry() %>%
+  select(gid, name, pop, x, y)
+```
+
+Read the distances calculated over the network using QNEAT3 in QGIS
+```{r}
+distances <- read.csv("data/SI-road-network-distances.csv", sep=';')
+```
+
+Make a graph
+```{r}
+# --------------------------------------------------------
+# Building a graph
+distances.m <- distances %>%
+  na.omit() %>%
+  # remove self loops
+  filter(origin_id != destination_id) %>%
+  # sort by distance from origins
+  group_by(origin_id) %>%                                
+  arrange(origin_id, network_cost) %>%
+  mutate(rank = row_number(), .by_group=TRUE) %>%
+  # and retain only the nearest k
+  filter(rank < 6) %>%
+  ungroup()
+```
+
+
+Now make a graph using `igraph`
+```{r}
+edges <- distances.m %>% 
+  rename(from=origin_id, to=destination_id, weight=network_cost)
+# vertices <- 
+
+G <- graph_from_data_frame(edges, directed=FALSE, vertices=pop_places.id)
+```
+
+Plot it
+```{r}
+plot(G, layout=xy, vertex.size=3, vertex.color='white',
+     vertex.label.cex=.5, vertex.label.color='black', vertex.size='pop',
+     edge.color='grey')
+```
+
+This is useful for debugging (finding names of problem locations)
+```{r}
+tmap_mode('view')
+tm_shape(pop_places.m) + 
+  tm_dots()
+```

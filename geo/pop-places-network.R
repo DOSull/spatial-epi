@@ -47,26 +47,5 @@ pop_places.m <- pop_places.m %>%
 ggplot(roads) +
   geom_sf(col='pink', lwd=0.15) +
   geom_sf(data=pop_places.m, aes(colour=cluster, alpha=prob), cex=3, lwd=0) +
-  scale_color_viridis_d(option='D') 
-# +
-#   geom_sf_text(aes(label=name), cex=0.65)
-
-tm_shape(filter(pop_places.m, prob > 0.25)) +
-  tm_dots(col='cluster', palette='Spectral')
-# --------------------------------------------------------
-# Building a graph
-distances.m <- distances %>%
-  #  filter(origin_id != destination_id) %>%
-  group_by(origin_id) %>%
-  arrange(origin_id, network_cost) %>%
-  mutate(rank = row_number(), .by_group=TRUE) %>%
-  filter(rank < 4) %>%
-  ungroup()
-
-G <- graph_from_data_frame(rename(distances.m, from=origin_id, to=destination_id, weight=network_cost), 
-                           vertices=pop_places.id, directed=FALSE)
-
-plot(G, layout=xy, vertex.size=3, vertex.color='white',
-     vertex.label.cex=.5, vertex.label.color='black', vertex.size='pop',
-     edge.color='grey')
-
+  scale_color_viridis_d(option='D') +
+  scale_alpha_continuous()

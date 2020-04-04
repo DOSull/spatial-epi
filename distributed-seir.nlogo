@@ -63,7 +63,7 @@ to setup
   ]
   ask locales with [not any? connection-neighbors] [ die ]
 
-  layout 100
+  ; repeat 60 [ layout-spring locales connections 0.4 10 2 ]
 
   set transmission-coeff R-0 / (relative-infectiousness-presymptomatic / presymptomatic-to-infected + 1 / infected-to-recovered)
 
@@ -76,11 +76,6 @@ to setup
   reset-ticks
 end
 
-to layout [n]
-  repeat n [
-    layout-spring locales connections 0.2 5 1
-  ]
-end
 
 to draw
   set color scale-color red dead (cfr-1 * pop-0 * 2) 0
@@ -104,7 +99,7 @@ end
 
 to update-variables
   ;; calculate all the flows
-  let new-exposures random-binomial susceptible (transmission-coeff * (relative-infectiousness-presymptomatic * get-effective-presymptomatic + get-effective-infected) / (pop-0 - dead))
+  let new-exposures random-binomial susceptible (transmission-coeff * (relative-infectiousness-presymptomatic * get-effective-presymptomatic + get-effective-infected) / pop-0)
   let new-presymptomatic random-binomial exposed exposed-to-presymptomatic
   let new-infected random-binomial presymptomatic presymptomatic-to-infected
   let no-longer-infected random-binomial infected (infected-to-recovered + cfr-tot)
@@ -164,19 +159,19 @@ end
 GRAPHICS-WINDOW
 425
 33
-833
-442
+825
+433
 -1
 -1
-16.0
+16
 1
 10
 1
 1
 1
 0
-0
-0
+1
+1
 1
 0
 24
@@ -186,7 +181,7 @@ GRAPHICS-WINDOW
 1
 1
 ticks
-30.0
+30
 
 BUTTON
 902
@@ -245,7 +240,7 @@ SLIDER
 206
 132
 R-0
-R-0
+r-0
 0.5
 4
 2.5
@@ -263,7 +258,7 @@ pop-per-locale
 pop-per-locale
 0
 (500000 / world-width / world-height)
-200.0
+200
 1
 1
 NIL
@@ -293,7 +288,7 @@ presymptomatic-to-infected
 presymptomatic-to-infected
 0
 1
-1.0
+1
 0.1
 1
 NIL
@@ -424,7 +419,7 @@ icu-cap
 icu-cap
 100
 600
-300.0
+300
 10
 1
 beds
@@ -439,7 +434,7 @@ initial-exposed
 initial-exposed
 0
 200
-20.0
+20
 1
 1
 NIL
@@ -453,17 +448,17 @@ PLOT
 plot 1
 NIL
 NIL
-0.0
-10.0
-0.0
-10.0
+0
+10
+0
+10
 true
 true
 "" ""
 PENS
-"infected" 1.0 0 -2674135 true "" "plot sum [exposed + presymptomatic + infected] of locales"
-"recovered" 1.0 0 -13840069 true "" "plot sum [recovered] of locales"
-"dead" 1.0 0 -16777216 true "" "plot sum [dead] of locales"
+"infected" 1 0 -2674135 true "" "plot sum [exposed + presymptomatic + infected] of locales"
+"recovered" 1 0 -13840069 true "" "plot sum [recovered] of locales"
+"dead" 1 0 -16777216 true "" "plot sum [dead] of locales"
 
 SLIDER
 1044
@@ -474,7 +469,7 @@ seed
 seed
 0
 100
-45.0
+50
 1
 1
 NIL
@@ -489,12 +484,11 @@ flow-rate
 flow-rate
 0
 0.1
-0.03
+0.01
 0.001
 1
 NIL
 HORIZONTAL
-
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -837,22 +831,22 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 default
-0.0
--0.2 0 0.0 1.0
-0.0 1 1.0 0.0
-0.2 0 0.0 1.0
+0
+-0.2 0 0 1
+0 1 1 0
+0.2 0 0 1
 link direction
 true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+
 @#$#@#$#@
