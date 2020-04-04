@@ -5,10 +5,10 @@ In particular a series of Netlogo models, as follows. Two (very) toy models expl
 + [bubbles.nlogo](bubbles.nlogo)
 + [nested-bubbles.nlogo](nested-bubbles.nlogo)
 
-and more substantively, a series of connected localised SEIR models
+and more substantively, a series of connected localised SEIR models. These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows:
 + [distributed-seir.nlogo](distributed-seir.nlogo) has random connections among a set of equal-sized locales
 + [distributed-seir-02.nlogo](distributed-seir-02.nlogo) has more spatially coherent connections among the same
-+ [distributed-seir-03.nlogo](distributed-seir-03.nlogo) is an attempt to enable the model to read in real health management zones
++ [distributed-seir-03.nlogo](distributed-seir-03.nlogo) is an attempt to enable the model to read in real health management zones. It works, but requires some idiosyncratic code for the file reading.
 
 All three of the above have excessive mortality, which has been corrected in the later models:
 + [distributed-seir-04.nlogo](distributed-seir-04.nlogo) reverts back to the main sequence and allows for locales to vary in size and variance, under paramterisable control
