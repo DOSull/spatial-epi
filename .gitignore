@@ -1,3 +1,10 @@
 results/
 other-stuff/
-
+*.shp
+*.prj
+*.shx
+*.cpg
+*.dbf
+*.qpj
+*.qgz
+*.gpkg
