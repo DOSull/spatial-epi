@@ -5,17 +5,11 @@ library(dbscan)
 library(igraph)
 library(ggplot2)
 
-plot.the.graph <- function(G, main='', layout=layout.grid(G), vertex.color='black') {
-  plot(G, main=main,
-       layout=layout, 
-       vertex.label=name, vertex.color=vertex.color, vertex.size=5, vertex.shape='circle', vertex.lwd=0, 
-       edge.color='black', edge.width=0.5)
-}
 
 setwd("~/Documents/code/spatial-epi/geo")
 
-roads <- st_read("SI-roads.shp")
-pop_places <- st_read("south-island-populated-places-points.shp")
+roads <- st_read("data/SI-roads.shp")
+pop_places <- st_read("data/south-island-populated-places-points.shp")
 xy <- st_coordinates(pop_places)
 pop_places.m <- pop_places %>%
   mutate(x = xy[, 1],
@@ -26,7 +20,7 @@ pop_places.id <- pop_places.m %>%
   st_drop_geometry() %>%
   select(gid, name, pop, x, y)
 
-distances <- read.csv("OUTPUT.csv", sep=';')
+distances <- read.csv("data/SI-road-network-distances.csv", sep=';')
 
 # Make into a matrix
 ids <- pop_places.id$gid
