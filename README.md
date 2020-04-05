@@ -12,4 +12,5 @@ and more substantively, a series of connected localised SEIR models. These have 
 
 All three of the above have excessive mortality, which has been corrected in the later models:
 + [distributed-seir-04.nlogo](distributed-seir-04.nlogo) reverts back to the main sequence and allows for locales to vary in size and variance, under paramterisable control
-+ [distributed-seir-05.nlogo](distributed-seir-05.nlogo) currently the same as 04, but will add lockdown levels and testing
++ [distributed-seir-05.nlogo](distributed-seir-05.nlogo) fixed lockdown levels and testing added
++ [distributed-seir-06.nlogo](distributed-seir-06.nlogo) same as previous, but will addded changing local lockdown levels

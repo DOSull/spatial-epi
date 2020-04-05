@@ -1,81 +1,250 @@
+;;
+;; Model for exploring spatial epidemiology of COVID-19
+;; from the perspective of regionalised control by 'alert levels'
+;; governing local R0
+;;
+;; One of a series of models, see https://github.com/DOSull/spatial-epi
+;;
+;; David O'Sullivan
+;; david.osullivan@vuw.ac.nz
+;;
+
+;; localities where control is administered
 breed [locales locale]
-
 locales-own [
-  pop-0
-  susceptible
-  exposed
-  presymptomatic
-  infected
-  recovered
-  dead
+  pop-0              ;; intial population
+  susceptible        ;; susceptible
+  exposed            ;; exposed
+  presymptomatic     ;; infected but not symptomatic
+  infected           ;; infected and symptomatic
+  recovered          ;; recovered
+  dead               ;; dead
+
+  untested
+  tests
+  tests-positive
+
+  new-exposed
+  new-presymptomatic
+  new-infected
+  new-recovered
+  new-dead
+
+  new-tests
+  new-tests-positive
+
+  alert-level        ;; local alert level which controls...
+  my-alert-indicator ;; local level turtle indicator
+  my-R0              ;; local R0 and
+  my-trans-coeff     ;; local transmission rate
+
+  my-flow-rate       ;; not yet implemented: control over inter-regional movement
 ]
 
+;; visualization aid to show alert levels
+breed [levels level]
+levels-own [
+  alert-level
+  my-locale
+]
+
+;; connections to other locales
 directed-link-breed [connections connection]
-
 connections-own [
-  w
+  w ;; inverse distance weighted _outward_ from each
 ]
+
 
 globals [
-  transmission-coeff
   n-icu
   cfr-tot
+
+  R0-levels         ;; R0s associated with the alert levels
+  mean-R0           ;; pop weighted mean R0
+  mean-trans-coeff  ;; pop weighted mean trans coeff
+
+  total-exposed            ;; exposed
+  total-presymptomatic     ;; infected but not symptomatic
+  total-infected           ;; infected and symptomatic
+  total-recovered          ;; recovered
+  total-dead               ;; dead
+
+  total-tests
+  total-tests-positive
+
+  total-new-exposed
+  total-new-presymptomatic
+  total-new-infected
+  total-new-recovered
+  total-new-dead
+
+  total-new-tests
+  total-new-tests-positive
 ]
 
 to setup
   clear-all
 
-  ask patches [set pcolor grey + 2]
+  ask patches [set pcolor blue - 3]
 
   if use-seed? [random-seed seed]
 
+  set R0-levels read-from-string alert-levels-R0
+
   setup-locales
-  setup-spatially-clustered-network
+  connect-network
+  setup-levels
 
-  set transmission-coeff R-0 / (relative-infectiousness-presymptomatic / presymptomatic-to-infected + 1 / infected-to-recovered)
-
-  repeat initial-exposed [
-    ask one-of locales [
-      expose 1
+  ;; initial exposures
+  ifelse uniform-by-pop? [
+    uniform-expose-by-population initial-exposed
+  ]
+  [
+    repeat initial-exposed [
+      ask one-of locales [
+        expose 1
+      ]
     ]
   ]
+  update-global-parameters
 
+  redraw
   reset-ticks
 end
 
+;; susceptible weighted infection so
+;; that higher population locales are more
+;; likely to receive exposures
+to uniform-expose-by-population [n]
+  repeat n [
+    ;; build cumulative total of susceptibles by locale
+    ;; ordered from highest to lowest
+    let susc reverse sort [susceptible] of locales
+    let cum-susc cumulative-sum susc
+    let total-susc last cum-susc
 
-to go
-  let infected-total sum [infected] of locales
-  set n-icu infected-total * p-icu
+    ;; order locales similarly
+    let ordered-locales reverse sort-on [susceptible] locales
+
+    ;; pick a random number and use it to pick the corresponding locale
+    let i random total-susc
+    let idx length filter [ x -> x < i ] cum-susc
+    ask item idx ordered-locales [
+      expose 1
+    ]
+  ]
+end
+
+to-report cumulative-sum [lst]
+  let starter sublist lst 0 1
+  report reduce [ [a b] -> lput (last a + b) a] (fput starter but-first lst)
+end
+
+to update-global-parameters
+  set mean-R0 sum [my-R0 * susceptible] of locales / sum [susceptible] of locales
+  set mean-trans-coeff sum [my-trans-coeff * susceptible] of locales / sum [susceptible] of locales
+
+  set total-exposed sum [exposed] of locales
+  set total-presymptomatic sum [presymptomatic] of locales
+  set total-infected sum [infected] of locales
+  set total-recovered sum [recovered] of locales
+  set total-dead sum [dead] of locales
+
+  set total-new-exposed sum [new-exposed] of locales
+  set total-new-presymptomatic sum [new-presymptomatic] of locales
+  set total-new-infected sum [new-infected] of locales
+  set total-new-recovered sum [new-recovered] of locales
+  set total-new-dead sum [new-dead] of locales
+
+  set total-tests sum [tests] of locales
+  set total-new-tests sum [new-tests] of locales
+  set total-tests-positive sum [tests-positive] of locales
+  set total-new-tests-positive sum [new-tests-positive] of locales
+
+  set n-icu total-infected * p-icu
   set cfr-tot cfr-0
   if n-icu > icu-cap [
     set cfr-tot (cfr-0 * icu-cap + (n-icu - icu-cap) * cfr-1) / n-icu
   ]
-  ask locales [
-    update-variables
+end
+
+
+;; -------------------------
+;; Main
+;; -------------------------
+to go
+  if (sum [infected + presymptomatic] of locales = 0 and ticks > 0) [
+    stop
   ]
+  ;; change-alert-levels
+  update-global-parameters
+
   ask locales [
-    draw
+    spread
   ]
+  redraw
 
   tick
 end
 
-to update-variables
+
+to change-alert-levels
+  ask locales [
+    let alert-level-change one-of (list -1 0 1)
+    let new-level alert-level + alert-level-change
+    set alert-level clamp new-level 0 4
+    ask my-alert-indicator [
+      set alert-level [alert-level] of myself
+      draw-level
+    ]
+    set-transmission-parameters alert-level
+  ]
+end
+
+to-report clamp [x mn mx]
+  report max (list mn min (list mx x))
+end
+
+to set-transmission-parameters [a]
+  set alert-level a
+  set my-R0 item alert-level R0-levels
+  set my-trans-coeff get-transmission-coeff my-R0
+end
+
+to-report get-transmission-coeff [R]
+  report R / (relative-infectiousness-presymptomatic / presymptomatic-to-infected + 1 / infected-to-recovered)
+end
+
+
+
+to spread
   ;; calculate all the flows
-  let new-exposures random-binomial susceptible (transmission-coeff * (relative-infectiousness-presymptomatic * get-effective-presymptomatic + get-effective-infected) / (pop-0 - dead))
-  let new-presymptomatic random-binomial exposed exposed-to-presymptomatic
-  let new-infected random-binomial presymptomatic presymptomatic-to-infected
+  set new-exposed random-binomial susceptible (my-trans-coeff * (relative-infectiousness-presymptomatic * get-effective-presymptomatic + get-effective-infected) / (pop-0 - dead))
+  set new-presymptomatic random-binomial exposed exposed-to-presymptomatic
+  set new-infected random-binomial presymptomatic presymptomatic-to-infected
+
   let no-longer-infected random-binomial infected infected-to-recovered
-  let new-recovered random-binomial no-longer-infected (1 - cfr-tot)
-  let new-dead no-longer-infected - new-recovered
+  set new-recovered random-binomial no-longer-infected (1 - cfr-tot)
+  set new-dead no-longer-infected - new-recovered
+
+  update-testing-results
 
   ;; update all the stocks
-  expose new-exposures
+  expose new-exposed
   presym new-presymptomatic
   infect new-infected
   recover new-recovered
   kill new-dead
+end
+
+to update-testing-results
+  set new-tests-positive random-binomial infected testing-rate-symptomatic
+  let new-tests-pre random-binomial (presymptomatic + exposed) testing-rate-presymptomatic
+  let new-tests-not random-binomial susceptible testing-rate-general
+  set new-tests new-tests-positive + new-tests-pre + new-tests-not
+
+  set tests tests + new-tests
+  set tests-positive tests-positive + new-tests-positive
 end
 
 to expose [n]
@@ -105,6 +274,7 @@ end
 to kill [n]
   ;;if n != 0 [show word "kill " n]
   set infected infected - n
+  set pop-0 pop-0 - n
   set dead dead + n
 end
 
@@ -116,13 +286,19 @@ to-report get-effective-presymptomatic
   report presymptomatic + flow-rate * sum [w * [presymptomatic] of other-end] of my-in-connections
 end
 
+;; --------------------------------------------------------------
+;; NOTE
+;; using random-poisson approximation for efficiency when n large
+;; --------------------------------------------------------------
 to-report random-binomial [n p]
+  if n > 100 [report random-poisson (n * p)]
   report length filter [x -> x < p] (n-values n [x -> random-float 1])
 end
 
 
+;; --------------------------------
 ;; initialisation stuff
-
+;; --------------------------------
 ;; locales
 to setup-locales
   set-default-shape locales "circle"
@@ -143,16 +319,29 @@ to setup-locales
     set infected 0
     set recovered 0
     set dead 0
-    draw
+
+    set-transmission-parameters init-alert-level
   ]
 end
 
-to draw
-  set color scale-color red dead (cfr-0 * pop-0) 0
+to setup-levels
+  set-default-shape levels "square 3"
+
+  ask locales [
+    let x nobody
+    hatch 1 [
+      set size size * sqrt 2
+      set breed levels
+      set my-locale myself
+      set x self
+    ]
+    set my-alert-indicator x
+  ]
 end
 
+
 ;; their connections
-to setup-spatially-clustered-network
+to connect-network
   ask locales [
     create-pair-of-connections self nearest-non-neighbour
   ]
@@ -173,6 +362,7 @@ to-report nearest-non-neighbour
   report first sort-on [distance myself] (other locales with [not connection-neighbor? myself])
 end
 
+;; creates directed links between a and b in both directions
 to create-pair-of-connections [a b]
   ask a [
     let d distance b
@@ -185,7 +375,7 @@ to create-pair-of-connections [a b]
 end
 
 to initialise-connection [d]
-  set color red
+  set color grey
   set w 1 / d
 end
 
@@ -199,17 +389,38 @@ to reweight-connections
   ]
 end
 
+;; ----------------------------
+;; Drawing stuff
+;; ----------------------------
+to redraw
+  ask locales [
+    draw-locale
+  ]
+  ask levels [
+    draw-level
+  ]
+end
+
+to draw-locale
+  set color scale-color red dead (cfr-1 * pop-0) 0
+end
+
+to draw-level
+  set alert-level [alert-level] of my-locale
+  set color item alert-level [grey lime yellow orange red]
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 529
 10
-1001
-483
+1096
+577
 -1
 -1
-16.0
+18.0
 1
-10
+24
 1
 1
 1
@@ -217,10 +428,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--14
-14
--14
-14
+-15
+15
+-15
+15
 1
 1
 1
@@ -228,10 +439,10 @@ ticks
 30.0
 
 BUTTON
-1029
-17
-1103
-51
+532
+587
+606
+621
 NIL
 setup
 NIL
@@ -245,10 +456,10 @@ NIL
 1
 
 BUTTON
-1029
-56
-1094
-90
+614
+587
+679
+621
 step
 go
 NIL
@@ -262,10 +473,10 @@ NIL
 1
 
 BUTTON
-1029
-96
-1093
-130
+684
+588
+748
+622
 NIL
 go
 T
@@ -279,25 +490,10 @@ NIL
 1
 
 SLIDER
-16
-27
-189
-60
-R-0
-R-0
-0.5
-4
-2.5
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-345
-74
-519
-107
+334
+66
+508
+99
 num-locales
 num-locales
 10
@@ -369,21 +565,21 @@ NIL
 HORIZONTAL
 
 MONITOR
-202
-32
-316
-77
-NIL
-transmission-coeff
+98
+26
+225
+72
+mean-trans-coeff
+mean-trans-coeff
 5
 1
 11
 
 SLIDER
-18
-274
-270
-307
+17
+469
+269
+502
 testing-rate-symptomatic
 testing-rate-symptomatic
 0
@@ -395,10 +591,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-12
-480
-185
-513
+14
+319
+154
+352
 cfr-0
 cfr-0
 0
@@ -410,10 +606,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-192
-482
-365
-515
+163
+317
+310
+350
 cfr-1
 cfr-1
 0
@@ -426,9 +622,9 @@ HORIZONTAL
 
 SLIDER
 14
-439
-187
-472
+277
+151
+310
 p-hosp
 p-hosp
 0
@@ -440,10 +636,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-9
-530
-182
-563
+10
+369
+156
+402
 p-icu
 p-icu
 0
@@ -455,43 +651,43 @@ NIL
 HORIZONTAL
 
 SLIDER
-192
-531
-365
-564
+161
+367
+311
+400
 icu-cap
 icu-cap
 100
 600
-300.0
+500.0
 10
 1
 beds
 HORIZONTAL
 
 SLIDER
-1025
-155
-1198
-188
+770
+587
+943
+620
 initial-exposed
 initial-exposed
 0
-200
-100.0
-1
+1000
+500.0
+10
 1
 NIL
 HORIZONTAL
 
 PLOT
-1023
-199
-1338
-464
-plot 1
+1110
+15
+1454
+197
+totals
 days
-log (pop + 1)
+log (people + 1)
 0.0
 6.0
 0.0
@@ -500,71 +696,73 @@ true
 true
 "" ""
 PENS
-"infected" 1.0 0 -2674135 true "" "plot log (sum [exposed + presymptomatic + infected] of locales + 1) 10"
-"recovered" 1.0 0 -13840069 true "" "plot log (sum [recovered] of locales + 1) 10"
-"dead" 1.0 0 -16777216 true "" "plot log (sum [dead] of locales + 1) 10"
+"exposed" 1.0 0 -8431303 true "" "plot log (total-exposed + 1) 10"
+"presymp" 1.0 0 -955883 true "" "plot log (total-presymptomatic + 1) 10"
+"infected" 1.0 0 -2674135 true "" "plot log (total-infected + 1) 10"
+"recovered" 1.0 0 -13840069 true "" "plot log (total-recovered + 1) 10"
+"dead" 1.0 0 -16777216 true "" "plot log (total-dead + 1) 10"
 
 SLIDER
-1145
-57
-1318
-90
+539
+674
+712
+707
 seed
 seed
 0
 100
-2.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-343
-334
-516
-367
+333
+326
+506
+359
 flow-rate
 flow-rate
 0
 1
-1.0
-0.001
+0.0
+0.1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-1148
-19
-1287
-52
+542
+636
+681
+669
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
 SLIDER
-346
-37
-519
-70
+334
+29
+507
+62
 population
 population
 100000
 10000000
-100000.0
+5000000.0
 100000
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-350
-18
-434
-36
+338
+10
+422
+28
 Population\n
 12
 0.0
@@ -581,55 +779,55 @@ Pandemic
 1
 
 TEXTBOX
-15
-420
-99
-438
+14
+258
+98
+276
 Mortality
 12
 0.0
 1
 
 TEXTBOX
-345
-314
-429
-332
+334
+306
+418
+324
 Connectivity
 12
 0.0
 1
 
 TEXTBOX
-19
-254
-103
-272
-Testing
+17
+449
+148
+479
+Control and testing
 12
 0.0
 1
 
 SLIDER
-345
-112
-517
-145
+334
+104
+506
+137
 pop-sd-multiplier
 pop-sd-multiplier
 0.01
 1.2
-0.13
+0.62
 0.01
 1
 NIL
 HORIZONTAL
 
 MONITOR
-346
-261
-455
-306
+336
+253
+445
+298
 total-pop
 sum [pop-0] of locales
 0
@@ -637,10 +835,10 @@ sum [pop-0] of locales
 11
 
 MONITOR
-345
-209
-453
-254
+334
+200
+442
+245
 max-pop
 max [pop-0] of locales
 0
@@ -648,15 +846,147 @@ max [pop-0] of locales
 11
 
 MONITOR
-344
-158
-424
-203
+333
+150
+413
+195
 min-pop
 min [pop-0] of locales
 0
 1
 11
+
+INPUTBOX
+349
+457
+498
+517
+alert-levels-R0
+[2.5 2.1 1.7 1.3 0.9]
+1
+0
+String
+
+MONITOR
+20
+26
+92
+72
+mean-R0
+mean-R0
+3
+1
+11
+
+SLIDER
+333
+540
+506
+574
+init-alert-level
+init-alert-level
+0
+4
+4.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1477
+18
+1535
+64
+dead
+sum [dead] of locales
+0
+1
+11
+
+SWITCH
+770
+628
+917
+662
+uniform-by-pop?
+uniform-by-pop?
+0
+1
+-1000
+
+PLOT
+1110
+210
+1454
+400
+new-cases
+days
+number of people
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"exposed" 1.0 0 -6459832 true "" "plot total-new-exposed"
+"presymp" 1.0 0 -955883 true "" "plot total-new-presymptomatic"
+"infected" 1.0 0 -2674135 true "" "plot total-new-infected"
+"recovered" 1.0 0 -13840069 true "" "plot total-new-recovered"
+"dead" 1.0 0 -16777216 true "" "plot total-new-dead"
+
+SLIDER
+18
+508
+295
+542
+testing-rate-presymptomatic
+testing-rate-presymptomatic
+0
+0.1
+0.005
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+547
+237
+581
+testing-rate-general
+testing-rate-general
+0
+0.002
+5.0E-4
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+1114
+412
+1461
+579
+testing
+days
+log (tests + 1)
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"tests" 1.0 0 -16777216 true "" "plot log (total-tests + 1) 10"
+"tests-pos" 1.0 0 -7500403 true "" "plot log (total-tests-positive + 1) 10"
+"new-tests" 1.0 0 -2674135 true "" "plot log (total-new-tests + 1) 10"
+"new-tests-pos" 1.0 0 -955883 true "" "plot log (total-new-tests-positive + 1) 10"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -913,6 +1243,13 @@ false
 0
 Rectangle -7500403 true true 30 30 270 270
 Rectangle -16777216 true false 60 60 240 240
+
+square 3
+false
+0
+Rectangle -7500403 false true 15 15 285 285
+Rectangle -7500403 false true 0 0 300 300
+Rectangle -7500403 false true 7 9 292 293
 
 star
 false
