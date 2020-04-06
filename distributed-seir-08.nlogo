@@ -121,7 +121,7 @@ to setup
   set all-new-tests-positive []
   update-global-parameters
 
-  set model-name "distributed-seir-08"
+  set model-name "distributed-seir-08-"
   set date-time date-and-time
   set log-folder "distributed-seir-results"
   set log-file-name (word log-folder "/" model-name date-time ".csv")
