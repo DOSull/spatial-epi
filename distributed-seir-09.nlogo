@@ -85,7 +85,6 @@ globals [
   all-new-tests-positive
 
   log-folder
-  log-header-file-name
   log-file-name
   date-time
   model-name
@@ -121,16 +120,13 @@ to setup
   set all-new-tests-positive []
   update-global-parameters
 
-  set model-name "distributed-seir-08"
+  set model-name "distributed-seir-09"
   set date-time date-and-time
   set log-folder "distributed-seir-results"
   set log-file-name (word log-folder "/" model-name date-time ".csv")
-  set log-header-file-name (word log-folder "/" model-name date-time ".header")
   if log-all-locales? [
-    file-open log-header-file-name
-    file-print log-file-header
-    file-close
     file-open log-file-name
+    file-print log-file-header
     file-print output-locale-header
     file-close
   ]
@@ -1921,23 +1917,46 @@ NetLogo 6.1.0
       <value value="0.25"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="locale-sizes-vs-lockdown-counts" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="730"/>
+    <timeLimit steps="100"/>
     <metric>count turtles</metric>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;global&quot;"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="testing-rate-presymptomatic">
       <value value="0.025"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="testing-rate-general">
       <value value="5.0E-4"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="init-alert-level">
+      <value value="0"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="use-seed?">
       <value value="false"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="seed">
+      <value value="30"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="population">
       <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="uniform-by-pop?">
       <value value="true"/>
@@ -1951,55 +1970,23 @@ NetLogo 6.1.0
     <enumeratedValueSet variable="cfr-0">
       <value value="0.01"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="time-horizon">
       <value value="7"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="cfr-1">
       <value value="0.02"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-flow">
       <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="28"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="2500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="init-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="presymptomatic-to-infected">
       <value value="1"/>
@@ -2009,6 +1996,12 @@ NetLogo 6.1.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-level-triggers">
       <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-all-locales?">
+      <value value="true"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>

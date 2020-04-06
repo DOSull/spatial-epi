@@ -15,6 +15,8 @@ All three of the above have excessive mortality, which has been corrected in lat
 + `distributed-seir-05.nlogo` fixed lockdown levels and testing added
 + [`distributed-seir-06.nlogo`](http://southosullivan.com/misc/distributed-seir-06.html) as previous but with correction to locale sizes to match total population more closely
 + [`distributed-seir-07.nlogo`](http://southosullivan.com/misc/distributed-seir-07.html) as previous but with automatic control of lockdown levels according to a variety of strategies
++ [`distributed-seir-08.nlogo`](http://southosullivan.com/misc/distributed-seir-08-web.html) adds logging of all locales data at every time step (the linked web version has no file logging)
++ `distributed-seir-09.nlogo` current working version
 
 COVID-19 spread parameters based on values used in [this work](https://cpb-ap-se2.wpmucdn.com/blogs.auckland.ac.nz/dist/d/75/files/2017/01/Supression-and-Mitigation-Strategies-New-Zealand-TPM-1.pdf), although results unlikely to match exactly given entirely different platform used (and the rapidly evolving situation).
 
