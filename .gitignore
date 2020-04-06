@@ -9,3 +9,5 @@ other-stuff/
 *.qgz
 *.gpkg
 *.tmp.nlogo
+*.RData
+*.RHistory
