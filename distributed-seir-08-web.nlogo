@@ -120,16 +120,16 @@ to setup
   set all-new-tests-positive []
   update-global-parameters
 
-  set model-name "distributed-seir-08"
-  set date-time date-and-time
-  set log-folder "distributed-seir-results"
-  set log-file-name (word log-folder "/" model-name date-time ".csv")
-  if log-all-locales? [
-    file-open log-file-name
-    file-print log-file-header
-    file-print output-locale-header
-    file-close
-  ]
+;  set model-name "distributed-seir-08"
+;  set date-time date-and-time
+;  set log-folder "distributed-seir-results"
+;  set log-file-name (word log-folder "/" model-name date-time ".csv")
+;  if log-all-locales? [
+;    file-open log-file-name
+;    file-print log-file-header
+;    file-print output-locale-header
+;    file-close
+;  ]
 
   redraw
   reset-ticks
@@ -229,13 +229,13 @@ to go
   ]
   redraw
 
-  if log-all-locales? [
-    file-open log-file-name
-    ask locales [
-      file-print output-locale
-    ]
-    file-close
-  ]
+;  if log-all-locales? [
+;    file-open log-file-name
+;    ask locales [
+;      file-print output-locale
+;    ]
+;    file-close
+;  ]
 
   tick
 end
