@@ -11,3 +11,5 @@ other-stuff/
 *.tmp.nlogo
 *.RData
 *.RHistory
+staging-area/
+test/
