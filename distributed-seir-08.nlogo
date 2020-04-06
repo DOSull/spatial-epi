@@ -10,9 +10,6 @@
 ;;
 
 
-extensions [csv]
-
-
 ;; localities where control is administered
 breed [locales locale]
 locales-own [
