@@ -87,6 +87,7 @@ globals [
   all-new-tests
   all-new-tests-positive
 
+  log-folder
   log-file-name
   date-time
   model-name
@@ -124,7 +125,8 @@ to setup
 
   set model-name "distributed-seir-08"
   set date-time date-and-time
-  set log-file-name (word model-name date-time ".csv")
+  set log-folder "distributed-seir-results"
+  set log-file-name (word log-folder "/" model-name date-time ".csv")
   if log-all-locales? [
     file-open log-file-name
     file-print log-file-header
@@ -221,7 +223,7 @@ to go
     stop
   ]
   update-testing-results
-  if ticks >= 28 and ticks mod time-horizon = 0 [
+  if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
     change-alert-levels
   ]
   update-global-parameters
@@ -565,36 +567,42 @@ to-report log-file-header
   set parameters lput join-list (list "max-pxcor" max-pxcor) "," parameters
   set parameters lput join-list (list "min-pycor" min-pycor) "," parameters
   set parameters lput join-list (list "max-pycor" max-pycor) "," parameters
-  set parameters lput join-list (list "initial-infected" initial-infected) "," parameters
-  set parameters lput join-list (list "alert-policy" alert-policy) "," parameters
-  set parameters lput join-list (list "testing-rate-presymptomatic" testing-rate-presymptomatic) "," parameters
-  set parameters lput join-list (list "testing-rate-general" testing-rate-general) "," parameters
-  set parameters lput join-list (list "init-alert-level" init-alert-level) "," parameters
   set parameters lput join-list (list "use-seed?" use-seed?) "," parameters
   set parameters lput join-list (list "seed" seed) "," parameters
-  set parameters lput join-list (list "relative-infectiousness-presymptomatic" relative-infectiousness-presymptomatic) "," parameters
-  set parameters lput join-list (list "p-icu" p-icu) "," parameters
-  set parameters lput join-list (list "pop-sd-multiplier" pop-sd-multiplier) "," parameters
-  set parameters lput join-list (list "population" population) "," parameters
-  set parameters lput join-list (list "p-hosp" p-hosp) "," parameters
+
+  set parameters lput join-list (list "initial-infected" initial-infected) "," parameters
   set parameters lput join-list (list "uniform-by-pop?" uniform-by-pop?) "," parameters
-  set parameters lput join-list (list "infected-to-recovered" infected-to-recovered) "," parameters
-  set parameters lput join-list (list "flow-rate" flow-rate) "," parameters
-  set parameters lput join-list (list "cfr-0" cfr-0) "," parameters
-  set parameters lput join-list (list "exposed-to-presymptomatic" exposed-to-presymptomatic) "," parameters
-  set parameters lput join-list (list "time-horizon" time-horizon) "," parameters
-  set parameters lput join-list (list "alert-levels-R0" alert-levels-R0) "," parameters
-  set parameters lput join-list (list "num-locales" num-locales) "," parameters
-  set parameters lput join-list (list "cfr-1" cfr-1) "," parameters
-  set parameters lput join-list (list "alert-levels-flow" alert-levels-flow) "," parameters
-  set parameters lput join-list (list "presymptomatic-to-infected" presymptomatic-to-infected) "," parameters
-  set parameters lput join-list (list "testing-rate-symptomatic" testing-rate-symptomatic) "," parameters
-  set parameters lput join-list (list "icu-cap" icu-cap) "," parameters
   set parameters lput join-list (list "log-all-locales?" log-all-locales?) "," parameters
+
+  set parameters lput join-list (list "init-alert-level" init-alert-level) "," parameters
+  set parameters lput join-list (list "alert-policy" alert-policy) "," parameters
+  set parameters lput join-list (list "start-lifting-quarantine" start-lifting-quarantine) "," parameters
+  set parameters lput join-list (list "time-horizon" time-horizon) "," parameters
+
+  set parameters lput join-list (list "alert-levels-R0" alert-levels-R0) "," parameters
+  set parameters lput join-list (list "alert-levels-flow" alert-levels-flow) "," parameters
+
+  set parameters lput join-list (list "testing-rate-symptomatic" testing-rate-symptomatic) "," parameters
+  set parameters lput join-list (list "testing-rate-presymptomatic" testing-rate-presymptomatic) "," parameters
+  set parameters lput join-list (list "testing-rate-general" testing-rate-general) "," parameters
+
+  set parameters lput join-list (list "population" population) "," parameters
+  set parameters lput join-list (list "num-locales" num-locales) "," parameters
+  set parameters lput join-list (list "pop-sd-multiplier" pop-sd-multiplier) "," parameters
+  set parameters lput join-list (list "flow-rate" flow-rate) "," parameters
+
+  set parameters lput join-list (list "exposed-to-presymptomatic" exposed-to-presymptomatic) "," parameters
+  set parameters lput join-list (list "presymptomatic-to-infected" presymptomatic-to-infected) "," parameters
+  set parameters lput join-list (list "relative-infectiousness-presymptomatic" relative-infectiousness-presymptomatic) "," parameters
+  set parameters lput join-list (list "infected-to-recovered" infected-to-recovered) "," parameters
+  set parameters lput join-list (list "p-hosp" p-hosp) "," parameters
+  set parameters lput join-list (list "p-icu" p-icu) "," parameters
+  set parameters lput join-list (list "icu-cap" icu-cap) "," parameters
+  set parameters lput join-list (list "cfr-0" cfr-0) "," parameters
+  set parameters lput join-list (list "cfr-1" cfr-1) "," parameters
 
   report join-list parameters "\n"
 end
-
 
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -676,13 +684,13 @@ NIL
 1
 
 SLIDER
-334
-66
-508
-99
+348
+63
+522
+96
 num-locales
 num-locales
-10
+20
 200
 100.0
 10
@@ -691,10 +699,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-82
-201
-115
+12
+155
+195
+188
 exposed-to-presymptomatic
 exposed-to-presymptomatic
 0
@@ -706,10 +714,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-19
-123
-200
-156
+13
+196
+194
+229
 presymptomatic-to-infected
 presymptomatic-to-infected
 0
@@ -721,10 +729,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-163
-201
-196
+12
+236
+195
+269
 infected-to-recovered
 infected-to-recovered
 0
@@ -736,10 +744,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-204
-323
-237
+12
+277
+317
+310
 relative-infectiousness-presymptomatic
 relative-infectiousness-presymptomatic
 0
@@ -751,9 +759,9 @@ NIL
 HORIZONTAL
 
 MONITOR
-98
+86
 26
-225
+213
 71
 mean-trans-coeff
 mean-trans-coeff
@@ -762,10 +770,10 @@ mean-trans-coeff
 11
 
 SLIDER
-17
-469
-269
-502
+14
+483
+239
+516
 testing-rate-symptomatic
 testing-rate-symptomatic
 0
@@ -777,10 +785,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-319
-154
-352
+13
+380
+153
+413
 cfr-0
 cfr-0
 0
@@ -792,10 +800,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-164
-322
-311
-355
+159
+380
+306
+413
 cfr-1
 cfr-1
 0
@@ -807,10 +815,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-277
-151
-310
+13
+338
+150
+371
 p-hosp
 p-hosp
 0
@@ -822,10 +830,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-369
-156
-402
+11
+419
+153
+452
 p-icu
 p-icu
 0
@@ -837,10 +845,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-163
-370
-313
-403
+158
+419
+308
+452
 icu-cap
 icu-cap
 100
@@ -852,15 +860,15 @@ beds
 HORIZONTAL
 
 SLIDER
-770
-587
-943
-620
+695
+633
+868
+666
 initial-infected
 initial-infected
 0
 5000
-100.0
+2500.0
 10
 1
 NIL
@@ -904,10 +912,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-333
-326
-506
-359
+344
+217
+517
+250
 flow-rate
 flow-rate
 0
@@ -930,10 +938,10 @@ use-seed?
 -1000
 
 SLIDER
-334
-29
-507
-62
+348
+26
+521
+59
 population
 population
 100000
@@ -945,19 +953,19 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-338
-10
-422
-28
+353
+7
+437
+25
 Population\n
 12
 0.0
 1
 
 TEXTBOX
-19
+7
 6
-103
+91
 24
 Pandemic
 12
@@ -965,40 +973,40 @@ Pandemic
 1
 
 TEXTBOX
-14
-258
-98
-276
+10
+297
+94
+315
 Mortality
 12
 0.0
 1
 
 TEXTBOX
-334
-306
-418
-324
+345
+197
+429
+215
 Connectivity
 12
 0.0
 1
 
 TEXTBOX
-17
-449
-148
-479
+12
+461
+143
+491
 Control and testing
 12
 0.0
 1
 
 SLIDER
-334
-104
-506
-137
+348
+101
+520
+134
 pop-sd-multiplier
 pop-sd-multiplier
 0.01
@@ -1010,10 +1018,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-336
-253
-445
-298
+263
+24
+343
+69
 total-pop
 sum [pop-0] of locales
 0
@@ -1021,10 +1029,10 @@ sum [pop-0] of locales
 11
 
 MONITOR
-334
-200
-442
-245
+437
+145
+517
+190
 max-pop
 max [pop-0] of locales
 0
@@ -1032,10 +1040,10 @@ max [pop-0] of locales
 11
 
 MONITOR
-333
-150
-413
-195
+350
+146
+431
+191
 min-pop
 min [pop-0] of locales
 0
@@ -1043,10 +1051,10 @@ min [pop-0] of locales
 11
 
 INPUTBOX
+132
+86
 321
-457
-510
-517
+146
 alert-levels-R0
 [2.5 2.1 1.6 1.1 0.6]
 1
@@ -1054,9 +1062,9 @@ alert-levels-R0
 String
 
 MONITOR
-20
+7
 26
-92
+79
 71
 mean-R0
 mean-R0
@@ -1065,15 +1073,15 @@ mean-R0
 11
 
 SLIDER
-321
-596
-494
-629
+348
+287
+521
+320
 init-alert-level
 init-alert-level
 0
 4
-0.0
+4.0
 1
 1
 NIL
@@ -1091,10 +1099,10 @@ total-dead
 11
 
 SWITCH
-770
-628
-917
-661
+720
+673
+867
+706
 uniform-by-pop?
 uniform-by-pop?
 0
@@ -1124,10 +1132,10 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot total-new-dead"
 
 SLIDER
-18
-508
-270
-541
+13
+520
+237
+553
 testing-rate-presymptomatic
 testing-rate-presymptomatic
 0
@@ -1139,10 +1147,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-17
-547
-237
-580
+12
+559
+236
+592
 testing-rate-general
 testing-rate-general
 0
@@ -1174,10 +1182,10 @@ PENS
 "new-tests-pos" 1.0 0 -955883 true "" "plot first all-new-tests-positive"
 
 INPUTBOX
-320
+367
+519
 523
-510
-583
+579
 alert-levels-flow
 [1.0 0.5 0.25 0.1 0.05]
 1
@@ -1185,14 +1193,14 @@ alert-levels-flow
 String
 
 CHOOSER
+367
 327
-648
-480
-693
+520
+372
 alert-policy
 alert-policy
 "global" "local" "local-random" "static"
-0
+1
 
 MONITOR
 1457
@@ -1217,10 +1225,10 @@ total-recovered
 11
 
 INPUTBOX
-18
-600
-278
-660
+316
+377
+523
+437
 alert-level-triggers
 [0.0005 0.001 0.0025 0.005 1]
 1
@@ -1228,10 +1236,10 @@ alert-level-triggers
 String
 
 SLIDER
-77
-668
-250
-701
+349
+479
+522
+512
 time-horizon
 time-horizon
 1
@@ -1239,19 +1247,154 @@ time-horizon
 7.0
 1
 1
-NIL
+days
 HORIZONTAL
 
 SWITCH
-773
-675
-951
-709
+540
+714
+711
+747
 log-all-locales?
 log-all-locales?
-0
+1
 1
 -1000
+
+SLIDER
+322
+440
+524
+473
+start-lifting-quarantine
+start-lifting-quarantine
+0
+56
+28.0
+7
+1
+days
+HORIZONTAL
+
+TEXTBOX
+350
+269
+429
+287
+Alert levels
+12
+0.0
+1
+
+MONITOR
+199
+623
+257
+668
+pop-lev-0
+sum [pop-0] of locales with [alert-level = 0]
+0
+1
+11
+
+MONITOR
+263
+623
+321
+668
+pop-lev-1
+sum [pop-0] of locales with [alert-level = 1]
+0
+1
+11
+
+MONITOR
+325
+623
+383
+668
+pop-lev-2
+sum [pop-0] of locales with [alert-level = 2]
+0
+1
+11
+
+MONITOR
+388
+623
+447
+668
+pop-lev-3
+sum [pop-0] of locales with [alert-level = 3]
+0
+1
+11
+
+MONITOR
+453
+623
+512
+668
+pop-lev-4
+sum [pop-0] of locales with [alert-level = 4]
+0
+1
+11
+
+MONITOR
+199
+674
+257
+719
+n-lev-0
+count locales with [alert-level = 0]
+0
+1
+11
+
+MONITOR
+263
+674
+321
+719
+n-lev-1
+count locales with [alert-level = 1]
+0
+1
+11
+
+MONITOR
+325
+674
+383
+719
+n-lev-2
+count locales with [alert-level = 2]
+0
+1
+11
+
+MONITOR
+388
+674
+447
+719
+n-lev-3
+count locales with [alert-level = 3]
+0
+1
+11
+
+MONITOR
+453
+674
+512
+719
+n-lev-4
+count locales with [alert-level = 4]
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
