@@ -91,12 +91,14 @@ globals [
   model-name
 
   alert-level-changes
+
+  size-adjust
 ]
 
 to setup
   clear-all
 
-  ask patches [set pcolor sky + 1]
+  ask patches [set pcolor cyan + 1]
 
   set-default-shape locales "circle"
   set-default-shape levels "square 3"
@@ -147,6 +149,10 @@ to setup
     file-print output-locale-header
     file-close
   ]
+
+  set size-adjust 0.25 / sqrt (count locales / count patches)
+  ask turtles [ set size size * size-adjust ]
+  jiggle
 
   redraw
   reset-ticks
@@ -449,7 +455,7 @@ to initialise-locales-parametrically
   let lambda (pop-mean / pop-var)
 
   create-locales num-locales [
-    let xy random-xy-with-buffer 0.05
+    let xy random-xy-with-buffer 0.1
     setxy item 0 xy item 1 xy
     set pop-0 ceiling (random-gamma alpha lambda)
   ]
@@ -461,18 +467,15 @@ to initialise-locales-parametrically
 end
 
 to-report random-xy-with-buffer [buffer]
-  let min-x (buffer / 2) * world-width
-  let min-y (buffer / 2) * world-height
-  let xrange world-width * (1 - buffer)
-  let yrange world-height * (1 - buffer)
-  report (list (min-x + random-float xrange) (min-y + random-float yrange))
+  report (list rescale random-xcor (min-pxcor - 0.5) (max-pxcor + 0.5) buffer true
+               rescale random-ycor (min-pycor - 0.5) (max-pycor + 0.5) buffer false)
 end
 
 
 to initialise-locales
   let mean-pop-0 mean [pop-0] of locales
   ask locales [
-    set size 5 * sqrt (pop-0 / mean-pop-0)
+    set size sqrt (pop-0 / mean-pop-0)
     set susceptible pop-0
     set exposed 0
     set presymptomatic 0
@@ -537,23 +540,54 @@ to initialise-locales-from-string [s]
       set label-color black
       set pop-0 read-from-string item 4 parameters
       setxy x y
-;      setxy (read-from-string item 5 parameters - 119) (read-from-string item 6 parameters - 476)
     ]
   ])
   initialise-locales
 end
 
 to-report rescale [z min-z max-z buffer x?]
-  let new-range ifelse-value x? [world-width * (1 - buffer)] [world-height * (1 - buffer)]
-  let new-min ifelse-value x? [(world-width - new-range) / 2] [(world-height - new-range) / 2]
-  report new-min + (z - min-z) / (max-z - min-z) * new-range
+  let new-range ifelse-value x? [(world-width - 1) * (1 - buffer)] [(world-height - 1) * (1 - buffer)]
+  let new-min ifelse-value x? [(world-width - 1 - new-range) / 2] [(world-height - 1 - new-range) / 2]
+  let new-z new-min + (z - min-z) / (max-z - min-z) * new-range
+  report new-z
+end
+
+to jiggle
+  let tol 0.25
+  let cl cramped-locales tol
+  while [any? cl] [
+    ask cl [
+      ask overlapping-locales tol [
+        face myself
+        rt 180
+        fd overlap myself
+      ]
+    ]
+    set tol tol * 0.75
+    set cl cramped-locales tol
+  ]
+  ask levels [
+    move-to my-locale
+  ]
+end
+
+to-report cramped-locales [eps]
+  report locales with [any? overlapping-locales eps]
+end
+
+to-report overlapping-locales [eps]
+  report (other locales) with [overlap myself > eps]
+end
+
+to-report overlap [tgt]
+  report (size + [size] of tgt) / 2 - distance tgt
 end
 
 to setup-levels
   ask locales [
     let x nobody
     hatch 1 [
-      set size size * sqrt 2
+      set size size * 1.2
       set breed levels
       set my-locale myself
       set x self
@@ -644,7 +678,7 @@ to reweight-connections
     let thickness-correction 2 / total-w
     ask my-out-connections [
       set w w * w-correction
-      set thickness thickness * thickness-correction
+      set thickness thickness * thickness-correction * size-adjust
     ]
   ]
 end
@@ -667,7 +701,7 @@ end
 
 to draw-level
   set alert-level [alert-level] of my-locale
-  set color item alert-level [grey lime yellow orange red]
+  set color item alert-level (list pcolor lime yellow orange red)
 end
 
 to-report string-as-list [str]
@@ -748,13 +782,13 @@ to-report log-file-header
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-529
-10
-941
-607
+540
+12
+936
+603
 -1
 -1
-4.0
+39.0
 1
 16
 1
@@ -765,9 +799,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-100
+9
 0
-146
+14
 1
 1
 1
@@ -834,7 +868,7 @@ num-locales
 num-locales
 20
 200
-100.0
+20.0
 10
 1
 NIL
