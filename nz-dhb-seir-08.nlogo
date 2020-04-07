@@ -102,6 +102,7 @@ to setup
 
   set-default-shape locales "circle"
   set-default-shape levels "square 3"
+  set-default-shape connections "myshape"
 
 
   if use-seed? [random-seed seed]
@@ -153,6 +154,7 @@ to setup
   set size-adjust 0.25 / sqrt (count locales / count patches)
   ask turtles [ set size size * size-adjust ]
   jiggle
+  ask connections [ set thickness thickness * size-adjust ]
 
   redraw
   reset-ticks
@@ -675,10 +677,10 @@ to reweight-connections
   ask locales [
     let total-w sum [w] of my-out-connections
     let w-correction 1 / total-w
-    let thickness-correction 2 / total-w
+    let thickness-correction 1 / total-w
     ask my-out-connections [
       set w w * w-correction
-      set thickness thickness * thickness-correction * size-adjust
+      set thickness thickness * thickness-correction
     ]
   ]
 end
@@ -784,8 +786,8 @@ end
 GRAPHICS-WINDOW
 540
 12
-936
-603
+938
+606
 -1
 -1
 39.0
@@ -868,7 +870,7 @@ num-locales
 num-locales
 20
 200
-20.0
+200.0
 10
 1
 NIL
@@ -1600,7 +1602,7 @@ INPUTBOX
 382
 850
 dhbs
-\"ID\" \"name\" \"x\" \"y\" \"pop\"\n1 \"Northland\" 1700348.426 6061149.38 178500\n2 \"Waitemata\" 1749476.385 5947203.201 622350\n3 \"Auckland\" 1757594.65 5920685.756 538840\n4 \"Counties.Manukau\" 1766973.195 5885442.521 557790\n5 \"Waikato\" 1810656.987 5816377.136 417130\n6 \"Lakes\" 1878016.101 5754014.304 110040\n7 \"Bay.of.Plenty\" 1896923.147 5815743.332 236820\n8 \"Tairawhiti\" 2038766.624 5713797.967 48965\n9 \"Taranaki\" 1699580.398 5662304.784 119640\n10 \"Hawkes.Bay\" 1934136.144 5612568.62 165360\n11 \"Whanganui\" 1784458.549 5579703.334 64565\n12 \"MidCentral\" 1816860.065 5524911.027 178240\n13 \"Hutt.Valley\" 1763986.614 5437753.032 149270\n14 \"Capital.and.Coast\" 1753070.355 5437211.947 316620\n15 \"Wairarapa\" 1817576.511 5457737.439 44845\n16 \"Nelson.Marlborough\" 1636138.569 5423667.669 150280\n17 \"West.Coast\" 1458495.717 5311071.999 32445\n18 \"Canterbury\" 1566860.177 5181157.507 562870\n19 \"South.Canterbury\" 1455463.883 5085777.75 60025\n20 \"Southern\" 1343425.477 4917902.664 328230
+ID name x y pop\n1 Northland 1700348.426 6061149.38 178500\n2 Waitemata 1749476.385 5947203.201 622350\n3 Auckland 1757594.65 5920685.756 538840\n4 Counties.Manukau 1766973.195 5885442.521 557790\n5 Waikato 1810656.987 5816377.136 417130\n6 Lakes 1878016.101 5754014.304 110040\n7 Bay.of.Plenty 1896923.147 5815743.332 236820\n8 Tairawhiti 2038766.624 5713797.967 48965\n9 Taranaki 1699580.398 5662304.784 119640\n10 Hawkes.Bay 1934136.144 5612568.62 165360\n11 Whanganui 1784458.549 5579703.334 64565\n12 MidCentral 1816860.065 5524911.027 178240\n13 Hutt.Valley 1763986.614 5437753.032 149270\n14 Capital.and.Coast 1753070.355 5437211.947 316620\n15 Wairarapa 1817576.511 5457737.439 44845\n16 Nelson.Marlborough 1636138.569 5423667.669 150280\n17 West.Coast 1458495.717 5311071.999 32445\n18 Canterbury 1566860.177 5181157.507 562870\n19 South.Canterbury 1455463.883 5085777.75 60025\n20 Southern 1343425.477 4917902.664 328230
 1
 1
 String
@@ -2346,6 +2348,17 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
+
+myshape
+0.0
+-0.2 0 0.0 1.0
+0.0 1 1.0 0.0
+0.2 0 0.0 1.0
+link direction
+true
+0
+Line -7500403 true 135 165 150 150
+Line -7500403 true 165 165 150 150
 @#$#@#$#@
 0
 @#$#@#$#@
