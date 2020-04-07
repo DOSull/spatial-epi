@@ -141,6 +141,8 @@ to setup
   ask connections [ set thickness thickness * size-adjust ]
 
   redraw
+  paint-land lime - 1 4
+
   reset-ticks
 end
 
@@ -664,15 +666,64 @@ end
 to-report join-list [lst sep]
   report reduce [ [a b] -> (word a sep b) ] lst
 end
+
+
+to paint-land [c n]
+  let loc nobody
+  let t nobody
+  ask locales [
+    set loc self
+    ask patch-here [
+      sprout 1 [
+        set color c
+        move-to loc
+        set pcolor color
+        set t self
+      ]
+    ]
+    let targets sort-on [length-link] my-out-connections
+    set targets sublist targets 0 min (list length targets n)
+    foreach targets [ edge ->
+      ask t [
+        walk-edge self loc edge
+      ]
+    ]
+    ask t [die]
+  ]
+end
+
+to walk-edge [ttl loc edge]
+  ask loc [
+    let tgt [other-end] of edge
+    ask ttl [
+      face tgt
+      let d distance tgt
+      let ceiling-d ceiling d
+      repeat ceiling-d [
+        fd d / ceiling-d
+        set pcolor color
+      ]
+    ]
+  ]
+end
+
+to-report length-link
+  let d 0
+  ask one-of both-ends [
+    set d distance [other-end] of myself
+  ]
+  report d
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 540
 12
-938
-606
+933
+600
 -1
 -1
-39.0
+24.0
 1
 16
 1
@@ -683,9 +734,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-9
+15
 0
-14
+23
 1
 1
 1
@@ -752,7 +803,7 @@ num-locales
 num-locales
 20
 200
-100.0
+50.0
 10
 1
 NIL
@@ -1488,6 +1539,23 @@ alert-level-changes / count locales / ticks
 4
 1
 11
+
+BUTTON
+722
+763
+850
+797
+toggle-edges
+ask connections [set hidden? not hidden?]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

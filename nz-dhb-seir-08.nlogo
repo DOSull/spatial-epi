@@ -157,6 +157,8 @@ to setup
   ask connections [ set thickness thickness * size-adjust ]
 
   redraw
+  paint-land lime - 1 4
+
   reset-ticks
 end
 
@@ -668,7 +670,7 @@ to create-pair-of-connections [a b]
 end
 
 to initialise-connection [d]
-  set color orange
+  set color [204 102 0 127]
   set w 1 / d
   set thickness w
 end
@@ -723,6 +725,56 @@ to-report split-string [str sep]
   [ report words ]
   [ report sentence words this-word ]
 end
+
+
+
+to paint-land [c n]
+  let loc nobody
+  let t nobody
+  ask locales [
+    set loc self
+    ask patch-here [
+      sprout 1 [
+        set color c
+        move-to loc
+        set pcolor color
+        set t self
+      ]
+    ]
+    let targets sort-on [length-link] my-out-connections
+    set targets sublist targets 0 min (list length targets n)
+    foreach targets [ edge ->
+      ask t [
+        walk-edge self loc edge
+      ]
+    ]
+    ask t [die]
+  ]
+end
+
+to walk-edge [ttl loc edge]
+  ask loc [
+    let tgt [other-end] of edge
+    ask ttl [
+      face tgt
+      let d distance tgt
+      let ceiling-d ceiling d
+      repeat ceiling-d [
+        fd d / ceiling-d
+        set pcolor color
+      ]
+    ]
+  ]
+end
+
+to-report length-link
+  let d 0
+  ask one-of both-ends [
+    set d distance [other-end] of myself
+  ]
+  report d
+end
+
 
 to-report join-list [lst sep]
   report reduce [ [a b] -> (word a sep b) ] lst
@@ -786,11 +838,11 @@ end
 GRAPHICS-WINDOW
 540
 12
-938
-606
+933
+598
 -1
 -1
-39.0
+24.0
 1
 16
 1
@@ -801,9 +853,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-9
+15
 0
-14
+23
 1
 1
 1
@@ -1629,6 +1681,23 @@ alert-level-changes / count locales / ticks
 1
 11
 
+BUTTON
+203
+719
+375
+753
+toggle-connections
+ask connections [set hidden? not hidden?]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -2350,7 +2419,7 @@ Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 
 myshape
-0.0
+0.6
 -0.2 0 0.0 1.0
 0.0 1 1.0 0.0
 0.2 0 0.0 1.0
