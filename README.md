@@ -18,7 +18,7 @@ All three of the above have excessive mortality, which has been corrected in lat
 + [`distributed-seir-08.nlogo`](http://southosullivan.com/misc/distributed-seir-08-web.html) adds logging of all locales data at every time step (the linked web version has no file logging)
 
 And now a version that can also be initialised with NZ DHB data:
-+ [`nz-dhb-seir-08.nlogo`](http://southosullivan.com/misc/nz-dhb-seir-08-web.html) adds logging of all locales data at every time step (the linked web version has no file logging)
++ [`nz-dhb-seir-08.nlogo`](http://southosullivan.com/misc/nz-dhb-seir-08-web.html) adds logging reading of spatial data from input GUI elements (done this way to permit same in web version)
 
 COVID-19 spread parameters based on values used in [this work](https://cpb-ap-se2.wpmucdn.com/blogs.auckland.ac.nz/dist/d/75/files/2017/01/Supression-and-Mitigation-Strategies-New-Zealand-TPM-1.pdf), although results unlikely to match exactly given entirely different platform used (and the rapidly evolving situation).
 
