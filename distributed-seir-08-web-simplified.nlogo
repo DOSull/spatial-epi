@@ -84,17 +84,45 @@ globals [
   all-new-tests
   all-new-tests-positive
 
-  log-header-file-name
+  log-folder
   log-file-name
-  full-file-name
   date-time
   model-name
+
+  ; hard coding epidemic parameters
+  exposed-to-presymptomatic
+  presymptomatic-to-infected
+  infected-to-recovered
+  relative-infectiousness-presymptomatic
+  p-hosp
+  cfr-0
+  cfr-1
+  p-icu
+  icu-cap
+  population
 ]
+
+;; Hard coding the epidemic parameters for a cleaner web interface
+to initialiase-hardcoded-globals
+  set exposed-to-presymptomatic 0.25
+  set presymptomatic-to-infected 1.0
+  set infected-to-recovered 0.1
+  set relative-infectiousness-presymptomatic 0.15
+  set p-hosp 0.05
+  set cfr-0 0.01
+  set cfr-1 0.02
+  set p-icu 0.0125
+  set icu-cap 500
+  set population 5000000
+end
+
 
 to setup
   clear-all
 
   ask patches [set pcolor blue - 3]
+
+  initialiase-hardcoded-globals
 
   if use-seed? [random-seed seed]
 
@@ -121,28 +149,19 @@ to setup
   set all-new-tests-positive []
   update-global-parameters
 
-  set model-name "distributed-seir-08"
-  set date-time replace date-and-time "." ":"
-  let base-file-name (word model-name "-" date-time)
-  set log-file-name (word base-file-name ".csv")
-  set full-file-name (word log-folder "/" log-file-name)
-  set log-header-file-name (word log-folder "/" base-file-name ".header")
-  if log-all-locales? [
-    file-open log-header-file-name
-    file-print log-file-header
-    file-close
-    file-open full-file-name
-    file-print output-locale-header
-    file-close
-  ]
+;  set model-name "distributed-seir-08"
+;  set date-time date-and-time
+;  set log-folder "distributed-seir-results"
+;  set log-file-name (word log-folder "/" model-name date-time ".csv")
+;  if log-all-locales? [
+;    file-open log-file-name
+;    file-print log-file-header
+;    file-print output-locale-header
+;    file-close
+;  ]
 
   redraw
   reset-ticks
-end
-
-to-report replace [s a b]
-  let i position a s
-  report replace-item i s b
 end
 
 ;; susceptible weighted infection so
@@ -239,13 +258,13 @@ to go
   ]
   redraw
 
-  if log-all-locales? [
-    file-open full-file-name
-    ask locales [
-      file-print output-locale
-    ]
-    file-close
-  ]
+;  if log-all-locales? [
+;    file-open log-file-name
+;    ask locales [
+;      file-print output-locale
+;    ]
+;    file-close
+;  ]
 
   tick
 end
@@ -555,70 +574,66 @@ to draw-level
 end
 
 
-to-report join-list [lst sep]
-  report reduce [ [a b] -> (word a sep b) ] lst
-end
-
-to-report output-locale
-  report join-list (list ticks who pop-0 susceptible exposed presymptomatic infected recovered dead tests tests-positive new-exposed new-presymptomatic new-infected new-recovered new-dead alert-level) ","
-end
-
-to-report output-locale-header
-  report "ticks,who,pop-0,susceptible,exposed,presymptomatic,infected,recovered,dead,tests,tests-positive,new-exposed,new-presymptomatic,new-infected,new-recovered,new-dead,alert-level"
-end
-
-to-report log-file-header
-  let parameters (list "name,value")
-  set parameters lput join-list (list "model.name" model-name) "," parameters
-  set parameters lput join-list (list "log.file.name" log-file-name) "," parameters
-  set parameters lput join-list (list "log.all.locales?" log-all-locales?) "," parameters
-  set parameters lput join-list (list "log.folder" log-folder) "," parameters
-
-  set parameters lput join-list (list "use.seed?" use-seed?) "," parameters
-  set parameters lput join-list (list "seed" seed) "," parameters
-
-  set parameters lput join-list (list "initial.infected" initial-infected) "," parameters
-  set parameters lput join-list (list "uniform.by.pop?" uniform-by-pop?) "," parameters
-  set parameters lput join-list (list "init.alert.level" init-alert-level) "," parameters
-  set parameters lput join-list (list "alert.policy" alert-policy) "," parameters
-  set parameters lput join-list (list "start.lifting.quarantine" start-lifting-quarantine) "," parameters
-  set parameters lput join-list (list "time.horizon" time-horizon) "," parameters
-
-  set parameters lput join-list (list "alert.levels.R0" alert-levels-R0) "," parameters
-  set parameters lput join-list (list "alert.levels.flow" alert-levels-flow) "," parameters
-
-  set parameters lput join-list (list "testing.rate.symptomatic" testing-rate-symptomatic) "," parameters
-  set parameters lput join-list (list "testing.rate.presymptomatic" testing-rate-presymptomatic) "," parameters
-  set parameters lput join-list (list "testing.rate.general" testing-rate-general) "," parameters
-
-  set parameters lput join-list (list "population" population) "," parameters
-  set parameters lput join-list (list "num.locales" num-locales) "," parameters
-  set parameters lput join-list (list "pop.sd.multiplier" pop-sd-multiplier) "," parameters
-  set parameters lput join-list (list "flow.rate" flow-rate) "," parameters
-
-  set parameters lput join-list (list "exposed.to.presymptomatic" exposed-to-presymptomatic) "," parameters
-  set parameters lput join-list (list "presymptomatic.to.infected" presymptomatic-to-infected) "," parameters
-  set parameters lput join-list (list "relative.infectiousness.presymptomatic" relative-infectiousness-presymptomatic) "," parameters
-  set parameters lput join-list (list "infected.to.recovered" infected-to-recovered) "," parameters
-  set parameters lput join-list (list "p.hosp" p-hosp) "," parameters
-  set parameters lput join-list (list "p.icu" p-icu) "," parameters
-  set parameters lput join-list (list "icu.cap" icu-cap) "," parameters
-  set parameters lput join-list (list "cfr.0" cfr-0) "," parameters
-  set parameters lput join-list (list "cfr.1" cfr-1) "," parameters
-
-  set parameters lput join-list (list "min.pxcor" min-pxcor) "," parameters
-  set parameters lput join-list (list "max.pxcor" max-pxcor) "," parameters
-  set parameters lput join-list (list "min.pycor" min-pycor) "," parameters
-  set parameters lput join-list (list "max.pycor" max-pycor) "," parameters
-
-  report join-list parameters "\n"
-end
+;to-report join-list [lst sep]
+;  report reduce [ [a b] -> (word a sep b) ] lst
+;end
+;
+;to-report output-locale
+;  report join-list (list ticks who pop-0 susceptible exposed presymptomatic infected recovered dead tests tests-positive new-exposed new-presymptomatic new-infected new-recovered new-dead alert-level) ","
+;end
+;
+;to-report output-locale-header
+;  report "ticks,who,pop-0,susceptible,exposed,presymptomatic,infected,recovered,dead,tests,tests-positive,new-exposed,new-presymptomatic,new-infected,new-recovered,new-dead,alert-level"
+;end
+;
+;to-report log-file-header
+;  let parameters (list model-name date-time)
+;  set parameters lput join-list (list "min-pxcor" min-pxcor) "," parameters
+;  set parameters lput join-list (list "max-pxcor" max-pxcor) "," parameters
+;  set parameters lput join-list (list "min-pycor" min-pycor) "," parameters
+;  set parameters lput join-list (list "max-pycor" max-pycor) "," parameters
+;  set parameters lput join-list (list "use-seed?" use-seed?) "," parameters
+;  set parameters lput join-list (list "seed" seed) "," parameters
+;
+;  set parameters lput join-list (list "initial-infected" initial-infected) "," parameters
+;  set parameters lput join-list (list "uniform-by-pop?" uniform-by-pop?) "," parameters
+;  set parameters lput join-list (list "log-all-locales?" log-all-locales?) "," parameters
+;
+;  set parameters lput join-list (list "init-alert-level" init-alert-level) "," parameters
+;  set parameters lput join-list (list "alert-policy" alert-policy) "," parameters
+;  set parameters lput join-list (list "start-lifting-quarantine" start-lifting-quarantine) "," parameters
+;  set parameters lput join-list (list "time-horizon" time-horizon) "," parameters
+;
+;  set parameters lput join-list (list "alert-levels-R0" alert-levels-R0) "," parameters
+;  set parameters lput join-list (list "alert-levels-flow" alert-levels-flow) "," parameters
+;
+;  set parameters lput join-list (list "testing-rate-symptomatic" testing-rate-symptomatic) "," parameters
+;  set parameters lput join-list (list "testing-rate-presymptomatic" testing-rate-presymptomatic) "," parameters
+;  set parameters lput join-list (list "testing-rate-general" testing-rate-general) "," parameters
+;
+;  set parameters lput join-list (list "population" population) "," parameters
+;  set parameters lput join-list (list "num-locales" num-locales) "," parameters
+;  set parameters lput join-list (list "pop-sd-multiplier" pop-sd-multiplier) "," parameters
+;  set parameters lput join-list (list "flow-rate" flow-rate) "," parameters
+;
+;  set parameters lput join-list (list "exposed-to-presymptomatic" exposed-to-presymptomatic) "," parameters
+;  set parameters lput join-list (list "presymptomatic-to-infected" presymptomatic-to-infected) "," parameters
+;  set parameters lput join-list (list "relative-infectiousness-presymptomatic" relative-infectiousness-presymptomatic) "," parameters
+;  set parameters lput join-list (list "infected-to-recovered" infected-to-recovered) "," parameters
+;  set parameters lput join-list (list "p-hosp" p-hosp) "," parameters
+;  set parameters lput join-list (list "p-icu" p-icu) "," parameters
+;  set parameters lput join-list (list "icu-cap" icu-cap) "," parameters
+;  set parameters lput join-list (list "cfr-0" cfr-0) "," parameters
+;  set parameters lput join-list (list "cfr-1" cfr-1) "," parameters
+;
+;  report join-list parameters "\n"
+;end
 @#$#@#$#@
 GRAPHICS-WINDOW
-529
-10
-1095
-577
+499
+12
+1065
+579
 -1
 -1
 18.0
@@ -642,10 +657,10 @@ ticks
 30.0
 
 BUTTON
-532
-587
-606
-621
+502
+590
+576
+624
 NIL
 setup
 NIL
@@ -659,10 +674,10 @@ NIL
 1
 
 BUTTON
-614
-587
-679
-621
+584
+590
+649
+624
 step
 go
 NIL
@@ -676,10 +691,10 @@ NIL
 1
 
 BUTTON
-684
-588
-748
-622
+654
+590
+718
+624
 NIL
 go
 T
@@ -693,76 +708,16 @@ NIL
 1
 
 SLIDER
-348
+320
+30
+494
 63
-522
-96
 num-locales
 num-locales
 20
 200
-50.0
+100.0
 10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-12
-155
-195
-188
-exposed-to-presymptomatic
-exposed-to-presymptomatic
-0
-1
-0.25
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-13
-196
-194
-229
-presymptomatic-to-infected
-presymptomatic-to-infected
-0
-1
-1.0
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-12
-236
-195
-269
-infected-to-recovered
-infected-to-recovered
-0
-1
-0.1
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-12
-277
-317
-310
-relative-infectiousness-presymptomatic
-relative-infectiousness-presymptomatic
-0
-1
-0.15
-0.01
 1
 NIL
 HORIZONTAL
@@ -779,10 +734,10 @@ mean-trans-coeff
 11
 
 SLIDER
-14
-483
-239
-516
+13
+174
+238
+207
 testing-rate-symptomatic
 testing-rate-symptomatic
 0
@@ -794,85 +749,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-13
-380
-153
-413
-cfr-0
-cfr-0
-0
-0.1
-0.01
-0.001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-159
-380
-306
-413
-cfr-1
-cfr-1
-0
-0.2
-0.02
-0.001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-13
-338
-150
-371
-p-hosp
-p-hosp
-0
-0.5
-0.05
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-11
-419
-153
-452
-p-icu
-p-icu
-0
-p-hosp
-0.0125
-0.0001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-158
-419
-308
-452
-icu-cap
-icu-cap
-100
-600
-500.0
-10
-1
-beds
-HORIZONTAL
-
-SLIDER
-695
-633
-868
-666
+733
+588
+906
+621
 initial-infected
 initial-infected
 0
@@ -884,10 +764,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1107
-15
-1451
-237
+1077
+18
+1421
+240
 totals
 days
 log (people + 1)
@@ -906,14 +786,14 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot log (total-dead + 1) 10"
 
 SLIDER
-539
-674
-712
-707
+919
+625
+1060
+659
 seed
 seed
 0
-100
+10000
 30.0
 1
 1
@@ -921,51 +801,36 @@ NIL
 HORIZONTAL
 
 SLIDER
-344
-217
-517
-250
+316
+190
+489
+223
 flow-rate
 flow-rate
 0
 1
-1.0
+0.5
 0.1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-542
-636
-681
-669
+920
+587
+1059
+620
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
-SLIDER
-348
-26
-521
-59
-population
-population
-100000
-10000000
-5000000.0
-100000
-1
-NIL
-HORIZONTAL
-
 TEXTBOX
-353
-7
-437
-25
+322
+8
+406
+26
 Population\n
 12
 0.0
@@ -982,40 +847,30 @@ Pandemic
 1
 
 TEXTBOX
-10
-297
-94
-315
-Mortality
-12
-0.0
-1
-
-TEXTBOX
-345
-197
-429
-215
+317
+170
+401
+188
 Connectivity
 12
 0.0
 1
 
 TEXTBOX
-12
-461
-143
-491
+11
+152
+142
+182
 Control and testing
 12
 0.0
 1
 
 SLIDER
-348
+320
+68
+492
 101
-520
-134
 pop-sd-multiplier
 pop-sd-multiplier
 0.01
@@ -1027,10 +882,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-263
-24
-343
-69
+236
+111
+316
+156
 total-pop
 sum [pop-0] of locales
 0
@@ -1038,10 +893,10 @@ sum [pop-0] of locales
 11
 
 MONITOR
-437
-145
-517
-190
+409
+112
+489
+157
 max-pop
 max [pop-0] of locales
 0
@@ -1049,10 +904,10 @@ max [pop-0] of locales
 11
 
 MONITOR
-350
-146
-431
-191
+321
+112
+402
+157
 min-pop
 min [pop-0] of locales
 0
@@ -1060,10 +915,10 @@ min [pop-0] of locales
 11
 
 INPUTBOX
-132
-86
-321
-146
+13
+81
+202
+141
 alert-levels-R0
 [2.5 2.1 1.6 1.1 0.6]
 1
@@ -1082,25 +937,25 @@ mean-R0
 11
 
 SLIDER
-348
-287
-521
-320
+180
+344
+353
+377
 init-alert-level
 init-alert-level
 0
 4
-3.0
+4.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-1457
-113
-1530
-158
+1427
+116
+1500
+161
 dead
 total-dead
 0
@@ -1108,10 +963,10 @@ total-dead
 11
 
 SWITCH
-720
-673
-867
-706
+758
+628
+905
+661
 uniform-by-pop?
 uniform-by-pop?
 0
@@ -1119,10 +974,10 @@ uniform-by-pop?
 -1000
 
 PLOT
-1106
-248
-1450
-482
+1076
+250
+1420
+484
 new-cases
 days
 number of people
@@ -1141,10 +996,10 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot total-new-dead"
 
 SLIDER
-13
-520
-237
-553
+12
+210
+236
+243
 testing-rate-presymptomatic
 testing-rate-presymptomatic
 0
@@ -1156,10 +1011,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-12
-559
-236
-592
+11
+250
+235
+283
 testing-rate-general
 testing-rate-general
 0
@@ -1171,10 +1026,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1105
-494
-1452
-731
+1075
+496
+1422
+733
 testing
 days
 tests
@@ -1191,10 +1046,10 @@ PENS
 "new-tests-pos" 1.0 0 -955883 true "" "plot first all-new-tests-positive"
 
 INPUTBOX
-367
-519
-523
-579
+315
+231
+489
+291
 alert-levels-flow
 [1.0 0.5 0.25 0.1 0.05]
 1
@@ -1202,20 +1057,20 @@ alert-levels-flow
 String
 
 CHOOSER
-367
-327
-520
-372
+199
+384
+352
+429
 alert-policy
 alert-policy
 "global" "local" "local-random" "static"
-3
+0
 
 MONITOR
-1457
-17
-1532
-62
+1427
+20
+1502
+65
 all-infected
 total-infected + total-presymptomatic + total-exposed
 0
@@ -1223,10 +1078,10 @@ total-infected + total-presymptomatic + total-exposed
 11
 
 MONITOR
-1457
-65
-1530
-110
+1427
+68
+1500
+113
 recovered
 total-recovered
 0
@@ -1234,10 +1089,10 @@ total-recovered
 11
 
 INPUTBOX
-316
-377
-523
-437
+150
+434
+355
+494
 alert-level-triggers
 [0.0005 0.001 0.0025 0.005 1]
 1
@@ -1245,10 +1100,10 @@ alert-level-triggers
 String
 
 SLIDER
-349
-479
-522
-512
+180
+540
+353
+573
 time-horizon
 time-horizon
 1
@@ -1259,22 +1114,11 @@ time-horizon
 days
 HORIZONTAL
 
-SWITCH
-910
-586
-1081
-619
-log-all-locales?
-log-all-locales?
-0
-1
--1000
-
 SLIDER
-322
-440
-524
-473
+153
+501
+355
+534
 start-lifting-quarantine
 start-lifting-quarantine
 0
@@ -1286,20 +1130,20 @@ days
 HORIZONTAL
 
 TEXTBOX
-350
-269
-429
-287
+284
+322
+363
+340
 Alert levels
 12
 0.0
 1
 
 MONITOR
-199
-623
-257
-668
+436
+326
+494
+371
 pop-lev-0
 sum [pop-0] of locales with [alert-level = 0]
 0
@@ -1307,10 +1151,10 @@ sum [pop-0] of locales with [alert-level = 0]
 11
 
 MONITOR
-263
-623
-321
-668
+435
+376
+493
+421
 pop-lev-1
 sum [pop-0] of locales with [alert-level = 1]
 0
@@ -1318,10 +1162,10 @@ sum [pop-0] of locales with [alert-level = 1]
 11
 
 MONITOR
-325
-623
-383
-668
+434
+428
+492
+473
 pop-lev-2
 sum [pop-0] of locales with [alert-level = 2]
 0
@@ -1329,10 +1173,10 @@ sum [pop-0] of locales with [alert-level = 2]
 11
 
 MONITOR
-388
-623
-447
-668
+434
+480
+493
+525
 pop-lev-3
 sum [pop-0] of locales with [alert-level = 3]
 0
@@ -1340,10 +1184,10 @@ sum [pop-0] of locales with [alert-level = 3]
 11
 
 MONITOR
-453
-623
-512
-668
+434
+533
+493
+578
 pop-lev-4
 sum [pop-0] of locales with [alert-level = 4]
 0
@@ -1351,10 +1195,10 @@ sum [pop-0] of locales with [alert-level = 4]
 11
 
 MONITOR
-199
-674
-257
-719
+374
+326
+432
+371
 n-lev-0
 count locales with [alert-level = 0]
 0
@@ -1362,10 +1206,10 @@ count locales with [alert-level = 0]
 11
 
 MONITOR
-263
-674
-321
-719
+372
+378
+430
+423
 n-lev-1
 count locales with [alert-level = 1]
 0
@@ -1373,10 +1217,10 @@ count locales with [alert-level = 1]
 11
 
 MONITOR
-325
-674
-383
-719
+372
+430
+430
+475
 n-lev-2
 count locales with [alert-level = 2]
 0
@@ -1384,10 +1228,10 @@ count locales with [alert-level = 2]
 11
 
 MONITOR
-388
-674
-447
-719
+370
+482
+429
+527
 n-lev-3
 count locales with [alert-level = 3]
 0
@@ -1395,26 +1239,15 @@ count locales with [alert-level = 3]
 11
 
 MONITOR
-453
-674
-512
-719
+369
+533
+428
+578
 n-lev-4
 count locales with [alert-level = 4]
 0
 1
 11
-
-INPUTBOX
-903
-627
-1088
-687
-log-folder
-test
-1
-0
-String
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1942,23 +1775,46 @@ NetLogo 6.1.0
       <value value="0.25"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="locale-sizes-vs-lockdown-counts" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <timeLimit steps="730"/>
+    <timeLimit steps="100"/>
     <metric>count turtles</metric>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;global&quot;"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="testing-rate-presymptomatic">
       <value value="0.025"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="testing-rate-general">
       <value value="5.0E-4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="init-alert-level">
+      <value value="0"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="use-seed?">
       <value value="false"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="seed">
+      <value value="30"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="population">
       <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="uniform-by-pop?">
       <value value="true"/>
@@ -1972,55 +1828,23 @@ NetLogo 6.1.0
     <enumeratedValueSet variable="cfr-0">
       <value value="0.01"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="time-horizon">
       <value value="7"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="cfr-1">
       <value value="0.02"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-flow">
       <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="28"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="2500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="init-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="presymptomatic-to-infected">
       <value value="1"/>
@@ -2031,92 +1855,11 @@ NetLogo 6.1.0
     <enumeratedValueSet variable="alert-level-triggers">
       <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
     </enumeratedValueSet>
-  </experiment>
-  <experiment name="locale-sizes-base-rates-under-static-lockdown-levels" repetitions="1" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="730"/>
-    <enumeratedValueSet variable="testing-rate-presymptomatic">
-      <value value="0.025"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-general">
-      <value value="5.0E-4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="uniform-by-pop?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="infected-to-recovered">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="flow-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-0">
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-1">
-      <value value="0.02"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
     <enumeratedValueSet variable="icu-cap">
       <value value="500"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="28"/>
-    </enumeratedValueSet>
     <enumeratedValueSet variable="log-all-locales?">
       <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="2500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;static&quot;"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="init-alert-level" first="0" step="1" last="4"/>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="presymptomatic-to-infected">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-symptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
