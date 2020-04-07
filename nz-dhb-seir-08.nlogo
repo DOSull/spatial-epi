@@ -377,6 +377,13 @@ to spread
   set new-recovered random-binomial no-longer-infected (1 - cfr-tot)
   set new-dead no-longer-infected - new-recovered
 
+;  show word "new exposed " new-exposed
+;  show word "new presymptomatic " new-presymptomatic
+;  show word "new infected " new-infected
+;  show word "no longer infected " no-longer-infected
+;  show word "new recovered " new-recovered
+;  show word "new dead " new-dead
+
   ;; update all the stocks
   expose new-exposed
   presym new-presymptomatic
@@ -399,31 +406,31 @@ to update-testing-results
 end
 
 to expose [n]
-  ;;if n != 0 [show word "expose " n]
+  ;show word "expose " n
   set susceptible susceptible - n
   set exposed exposed + n
 end
 
 to presym [n]
-  ;;if n != 0 [show word "presym " n]
+  ;show word "presym " n
   set exposed exposed - n
   set presymptomatic presymptomatic + n
 end
 
 to infect [n]
-  ;;if n != 0 [show word "infect " n]
+  ;show word "infect " n
   set presymptomatic presymptomatic - n
   set infected infected + n
 end
 
 to recover [n]
-  ;;if n != 0 [show word "recover " n]
+  ;show word "recover " n
   set infected infected - n
   set recovered recovered + n
 end
 
 to kill [n]
-  ;;if n != 0 [show word "kill " n]
+  ;show word "kill " n
   set infected infected - n
   set pop-0 pop-0 - n
   set dead dead + n
@@ -442,7 +449,9 @@ end
 ;; using random-poisson approximation for efficiency when n large
 ;; --------------------------------------------------------------
 to-report random-binomial [n p]
-  if n > 100 [report random-poisson (n * p)]
+  if p = 0 [report 0]
+  if p = 1 [report n]
+  if n > 100 and p <= 0.25 [report random-poisson (n * p)]
   report length filter [x -> x < p] (n-values n [x -> random-float 1])
 end
 
@@ -922,7 +931,7 @@ num-locales
 num-locales
 20
 200
-200.0
+100.0
 10
 1
 NIL
@@ -1098,7 +1107,7 @@ initial-infected
 initial-infected
 0
 5000
-1060.0
+2500.0
 10
 1
 NIL
@@ -1135,7 +1144,7 @@ seed
 seed
 0
 100
-29.0
+30.0
 1
 1
 NIL
@@ -1644,7 +1653,7 @@ SWITCH
 752
 initialise-from-nz-data?
 initialise-from-nz-data?
-0
+1
 1
 -1000
 
@@ -2365,7 +2374,7 @@ NetLogo 6.1.0
       <value value="28"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-infected">
       <value value="2500"/>

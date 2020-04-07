@@ -418,7 +418,9 @@ end
 ;; using random-poisson approximation for efficiency when n large
 ;; --------------------------------------------------------------
 to-report random-binomial [n p]
-  if n > 100 [report random-poisson (n * p)]
+  if p = 0 [report 0]
+  if p = 1 [report n]
+  if n > 100 and p <= 0.25 [report random-poisson (n * p)]
   report length filter [x -> x < p] (n-values n [x -> random-float 1])
 end
 
@@ -714,13 +716,12 @@ to-report length-link
   ]
   report d
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 540
 12
-933
-600
+932
+597
 -1
 -1
 24.0
