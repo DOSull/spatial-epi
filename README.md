@@ -28,15 +28,15 @@ A preliminary result from this model is shown below, suggesting that similar lev
 
 ## Earlier versions of the distributed SEIR model
 These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows, with links to web version where available:
-+ [`distributed-seir-07.nlogo`](http://southosullivan.com/misc/distributed-seir-07.html) as previous but with automatic control of lockdown levels according to a variety of strategies
-+ [`distributed-seir-06.nlogo`](http://southosullivan.com/misc/distributed-seir-06.html) as previous but with correction to locale sizes to match total population more closely
++ `distributed-seir-07.nlogo` as previous but with automatic control of lockdown levels according to a variety of strategies
++ `distributed-seir-06.nlogo` as previous but with correction to locale sizes to match total population more closely
 + `distributed-seir-05.nlogo` fixed lockdown levels and testing added
 + `distributed-seir-04.nlogo` reverts back to the main sequence and allows for locales to vary in size and variance, under paramterisable control
 
 Three even earlier versions have excessive mortality, which has been corrected in later models. The later models are more worth spending time with.
 + `distributed-seir-03.nlogo` is an attempt to enable the model to read in real health management zones. It works, but requires some idiosyncratic code for the file reading.
-+ [`distributed-seir-02.nlogo`](http://southosullivan.com/misc/distributed-seir-02.html) has more spatially coherent connections among the same
-+ [`distributed-seir.nlogo`](http://southosullivan.com/misc/distributed-seir.html) has random connections among a set of equal-sized locales
++ `distributed-seir-02.nlogo` has more spatially coherent connections among the same
++ `distributed-seir.nlogo` has random connections among a set of equal-sized locales
 
 ## Experimental
 For completeness these two explorations of social isolation 'bubbles' and 'leakage' between them
