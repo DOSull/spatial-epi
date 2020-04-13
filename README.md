@@ -4,20 +4,20 @@ A collection of models and other bits and pieces for thinking through how to do 
 ## Distributed stochastic branching model
 The model below is a reimplementation of the stochastic branching model by Plank et al. described [here](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/), insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
 
-The major difference from that work is that the branching model of infectious spread is localised to regions (in this case District Healh Boards) so that reinfection of previously controlled areas might occur in the absence of strong controls on inter-regional travel.
-+ [`nz-dhb-branching-beta.0.4-logging.nlogo`](http://southosullivan.com/misc/nz-dhb-branching-beta.0.4.html) Click the link for a web version.
+The important difference from that work is that the branching model of infectious spread is localised to regions (in this case District Healh Boards) so that reinfection of previously controlled areas might occur in the absence of strong controls on inter-regional travel.
++ [`nz-dhb-branching-beta.0.4-logging.nlogo`](nz-dhb-branching-beta.0.4-logging.nlogo?raw=true) Click [this link](http://southosullivan.com/misc/nz-dhb-branching-beta.0.4.html) for the web version.
 
 ## Distributed SEIR models
-These models have localised [SEIR models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology). More specifically these have been coded to match most of the parameters reported for the [Te Pūnaha Matatini SEIR model for COVID-19 in New Zealand, as described here](https://www.tepunahamatatini.ac.nz/2020/03/26/suppression-and-mitigation-strategies-for-control-of-covid-19-in-new-zealand/), although results are unlikely to match exactly given entirely different platform used (and the rapidly evolving situation).
+These models have interconnected local [SEIR models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology). More specifically these have been coded to with most of the parameters reported for the [Te Pūnaha Matatini SEIR model for COVID-19 in New Zealand, as described here](https://www.tepunahamatatini.ac.nz/2020/03/26/suppression-and-mitigation-strategies-for-control-of-covid-19-in-new-zealand/), although results are unlikely to match exactly given the entirely different platform used, the rapidly evolving situation, and the limitations of verbal descriptions (with or without equations) as a way to unambiguously describe computational models.
 
 The major change from the TPM model is that compartment model runs in individual regions (called 'locales' in the model) linked by a network of connections that mean that depending on travel restrictions that might be imposed or not, disease may reemerge in locales previously cleared. A focal interest is in how different sized regionalisation might allow quarantine levels to be relaxed more or less quickly without compromising measures of success in controlling the epidemic.
-+ [`distributed-seir-08.nlogo`](http://southosullivan.com/misc/distributed-seir-08-web.html) adds logging of all locales data at every time step (the linked web version has no file logging)
++ [`distributed-seir-08.nlogo`](distributed-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/distributed-seir-08-web.html) for a web version.
 
 A version that can also be initialised with NZ DHB data:
-+ [`nz-dhb-seir-08.nlogo`](http://southosullivan.com/misc/nz-dhb-seir-08-web.html) adds logging reading of spatial data from input GUI elements (done this way to permit same in web version)
++ [`nz-dhb-seir-08.nlogo`](nz-dhb-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/nz-dhb-seir-08-web.html) for the web version.
 
 And with NZ Territorial Authority data:
-+ [`nz-ta-seir-08.nlogo`](http://southosullivan.com/misc/nz-ta-seir-08-web.html) adds logging reading of spatial data from input GUI elements (done this way to permit same in web version)
++ [`nz-ta-seir-08.nlogo`](nz-ta-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/nz-ta-seir-08-web.html) for the web version.
 
 A preliminary result from this model is shown below, suggesting that similar levels of control over spread could potentially be maintained while returning more of the population to low or no quarantine restrictions if quarantine is managed more locally (i.e. using a finer grained regional map.) These results are based not on the actual population map, but on randomly generated abstract spaces with uneven population distributions as would be expected across a range of urban and rural settings.
 #### Population in different lockdown levels by number of locales
