@@ -2,7 +2,7 @@
 A collection of models and other bits and pieces for thinking through how to do spatial epidemic spread modelling.
 
 ## Distributed stochastic branching model
-The model below is a reimplementation of the stochastic branching model described [here](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/), insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
+The model below is a reimplementation of the stochastic branching model by Plank et al. described [here](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/), insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
 
 The major difference from that work is that the branching model of infectious spread is localised to regions (in this case District Healh Boards) so that reinfection of previously controlled areas might occur in the absence of strong controls on inter-regional travel.
 + [`nz-dhb-branching-beta.0.4-logging.nlogo`](http://southosullivan.com/misc/nz-dhb-branching-beta.0.4.html) Click the link for a web version.
