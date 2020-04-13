@@ -5,7 +5,7 @@ A collection of models and other bits and pieces for thinking through how to do 
 The model below is a reimplementation of the stochastic branching model described [here](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/), insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
 
 The major difference from that work is that the branching model of infectious spread is localised to regions (in this case District Healh Boards) so that reinfection of previously controlled areas might occur in the absence of strong controls on inter-regional travel.
-+ [`nz-dhb-branching-beta.0.4-logging.nlogo`](http://southosullivan.com/misc/nz-dhb-branching-beta.0.4.html)
++ [`nz-dhb-branching-beta.0.4-logging.nlogo`](http://southosullivan.com/misc/nz-dhb-branching-beta.0.4.html) Click the link for a web version.
 
 ## Distributed SEIR models
 These models have localised [SEIR models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology). More specifically these have been coded to match most of the parameters reported for the [Te Pūnaha Matatini SEIR model for COVID-19 in New Zealand, as described here](https://www.tepunahamatatini.ac.nz/2020/03/26/suppression-and-mitigation-strategies-for-control-of-covid-19-in-new-zealand/), although results are unlikely to match exactly given entirely different platform used (and the rapidly evolving situation).
@@ -19,7 +19,7 @@ A version that can also be initialised with NZ DHB data:
 And with NZ Territorial Authority data:
 + [`nz-ta-seir-08.nlogo`](http://southosullivan.com/misc/nz-ta-seir-08-web.html) adds logging reading of spatial data from input GUI elements (done this way to permit same in web version)
 
-A preliminary result from this model is shown below, suggesting that similar levels of control over spread can be maintained while returning more regions to low or no quarantine restrictions if quarantine is managed more locally (i.e. using a finer grained regional map.)
+A preliminary result from this model is shown below, suggesting that similar levels of control over spread could potentially be maintained while returning more of the population to low or no quarantine restrictions if quarantine is managed more locally (i.e. using a finer grained regional map.) These results are based not on the actual population map, but on randomly generated abstract spaces with uneven population distributions as would be expected across a range of urban and rural settings.
 #### Population in different lockdown levels by number of locales
 <img src='population-in-different-alert-levels-by-num-locales.png' width=800>
 
@@ -38,10 +38,10 @@ Three even earlier versions have excessive mortality, which has been corrected i
 + [`distributed-seir-02.nlogo`](http://southosullivan.com/misc/distributed-seir-02.html) has more spatially coherent connections among the same
 + [`distributed-seir.nlogo`](http://southosullivan.com/misc/distributed-seir.html) has random connections among a set of equal-sized locales
 
-## Experiments
-In particular a series of Netlogo models, as follows. Two (very) toy models exploring self isolation 'bubbles'
+## Experimental
+For completeness these two explorations of social isolation 'bubbles' and 'leakage' between them
 + [`bubbles.nlogo`](http://southosullivan.com/misc/bubbles.html)
 + [`nested-bubbles.nlogo`](http://southosullivan.com/misc/nested-bubbles.html)
 
 ### Web versions
-You can make a web version of any of these by uploading the `.nlogo' file to [http://netlogoweb.org/](http://netlogoweb.org/launch#Load). Some models include `file-` commands not supported by Netlogo Web and will not work.
+You can make a web version of any of these by uploading the `.nlogo` file to [http://netlogoweb.org/](http://netlogoweb.org/launch#Load). Some models include `file-` commands not supported by Netlogo Web and will not work.
