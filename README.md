@@ -27,7 +27,7 @@ A preliminary result from this model is shown below, suggesting that similar lev
 <img src='pandemic-time-series-by-num-locales.png' width=800>
 
 ## Earlier versions of the distributed SEIR model
-These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows, with links to web version where available:
+These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows. You can find these in the [models](models) folder:
 + `distributed-seir-07.nlogo` as previous but with automatic control of lockdown levels according to a variety of strategies
 + `distributed-seir-06.nlogo` as previous but with correction to locale sizes to match total population more closely
 + `distributed-seir-05.nlogo` fixed lockdown levels and testing added
