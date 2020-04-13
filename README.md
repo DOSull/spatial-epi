@@ -1,5 +1,5 @@
 # spatial-epi
-A collection of models and other bits and pieces for thinking through how to do spatial epidemic spread modelling.
+A collection of models in [Netlogo](tree/master/) along with other bits and pieces for thinking through how to do spatial epidemic spread modelling.
 
 ## Distributed stochastic branching model
 The model below is a reimplementation of the stochastic branching model by Plank et al. described [here](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/), insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
