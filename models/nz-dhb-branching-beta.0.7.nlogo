@@ -317,49 +317,73 @@ to change-alert-levels
 
   if alert-policy = "local" [
     ask locales [
-      let current-new-cases recent-total recent-new-cases
-      let current-tests recent-total recent-tests
-      if current-tests > 0 [
-        let positive-test-rate current-new-cases / current-tests
-        let new-level get-new-alert-level positive-test-rate
-        if new-level != alert-level [
-          ifelse new-level < alert-level [
-            set alert-level clamp (alert-level - 1) 1 4
-          ]
-          [
-            set alert-level new-level
-          ]
-          set alert-level-changes alert-level-changes + 1
+      let positive-test-rate get-positive-test-rate
+      let new-level get-new-alert-level positive-test-rate
+      if new-level != alert-level [
+        ifelse new-level < alert-level [
+          set alert-level clamp (alert-level - 1) 1 4
         ]
+        [
+          set alert-level new-level
+        ]
+        set alert-level-changes alert-level-changes + 1
       ]
     ]
     enact-new-levels
     stop
   ]
 
-  if alert-policy = "global" [
-    let current-new-cases sum [recent-total recent-new-cases] of locales
-    let current-tests sum [recent-total recent-tests] of locales
-    if current-tests > 0 [
-      let positive-test-rate current-new-cases / current-tests
-      let new-level get-new-alert-level positive-test-rate
-      let a [alert-level] of one-of locales
-      if new-level != a [
-        ifelse new-level < a [
-          ask locales [
-            set alert-level clamp (alert-level - 1) 1 4
-          ]
+  if alert-policy = "global-max" [
+    let positive-test-rate max [get-positive-test-rate] of locales
+    let new-level get-new-alert-level positive-test-rate
+    let a [alert-level] of one-of locales
+    if new-level != a [
+      ifelse new-level < a [
+        ask locales [
+          set alert-level clamp (alert-level - 1) 1 4
         ]
-        [
-          ask locales [
-            set alert-level new-level
-          ]
-        ]
-        set alert-level-changes alert-level-changes + count locales
       ]
+      [
+        ask locales [
+          set alert-level new-level
+        ]
+      ]
+      set alert-level-changes alert-level-changes + count locales
     ]
     enact-new-levels
     stop
+  ]
+
+  if alert-policy = "global-mean" [
+    let positive-test-rate sum [get-positive-test-rate * pop-0] of locales / sum [pop-0] of locales
+    let new-level get-new-alert-level positive-test-rate
+    let a [alert-level] of one-of locales
+    if new-level != a [
+      ifelse new-level < a [
+        ask locales [
+          set alert-level clamp (alert-level - 1) 1 4
+        ]
+      ]
+      [
+        ask locales [
+          set alert-level new-level
+        ]
+      ]
+      set alert-level-changes alert-level-changes + count locales
+    ]
+    enact-new-levels
+    stop
+  ]
+end
+
+to-report get-positive-test-rate
+  let current-new-cases recent-total recent-new-cases
+  let current-tests recent-total recent-tests
+  ifelse current-tests > 0 [
+    report current-new-cases / current-tests
+  ]
+  [
+    report 1
   ]
 end
 
@@ -915,7 +939,7 @@ end
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-;  set model-name "nz-dhb-branching-beta.0.4-logging"
+;  set model-name "nz-dhb-branching-beta.0.6-logging"
 ;  set date-time replace date-and-time "." ":"
 ;  let base-file-name (word model-name "-" date-time)
 ;  set log-file-name (word base-file-name ".csv")
@@ -948,6 +972,11 @@ to-report log-file-header
 
   set parameters lput join-list (list "use.seed?" use-seed?) "," parameters
   set parameters lput join-list (list "seed" seed) "," parameters
+  set parameters lput join-list (list "initialise-from-nz-data?" initialise-from-nz-data?) "," parameters
+  set parameters lput join-list (list "dhbs?" dhbs?) "," parameters
+  set parameters lput join-list (list "gravity-weight?" gravity-weight?) "," parameters
+  set parameters lput join-list (list "max-connection-distance" max-connection-distance) "," parameters
+
 
   set parameters lput join-list (list "initial.infected" initial-infected) "," parameters
   set parameters lput join-list (list "uniform.by.pop?" uniform-by-pop?) "," parameters
@@ -2203,10 +2232,10 @@ days
 100.0
 
 BUTTON
-457
-17
-531
-51
+458
+22
+532
+56
 NIL
 setup
 NIL
@@ -2237,9 +2266,9 @@ NIL
 1
 
 BUTTON
-458
+459
 62
-532
+533
 97
 NIL
 go
@@ -2254,31 +2283,16 @@ NIL
 1
 
 SLIDER
-9
-62
-183
-95
+14
+93
+188
+127
 num-locales
 num-locales
 20
 200
 100.0
 10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-10
-693
-170
-726
-test-rate-symp
-test-rate-symp
-0
-1
-0.5
-0.01
 1
 NIL
 HORIZONTAL
@@ -2292,32 +2306,32 @@ initial-infected
 initial-infected
 0
 2000
-1330.0
+1000.0
 10
 1
 NIL
 HORIZONTAL
 
 SLIDER
-264
-58
-437
-91
+236
+104
+409
+137
 seed
 seed
 0
 100
-20.0
+30.0
 1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-298
-19
-437
-52
+237
+68
+376
+101
 use-seed?
 use-seed?
 1
@@ -2325,65 +2339,65 @@ use-seed?
 -1000
 
 SLIDER
-9
-25
-182
-58
+14
+55
+187
+88
 population
 population
 100000
 10000000
-5000000.0
+4900000.0
 100000
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-14
+15
 7
-98
-25
-Population\n
+215
+55
+Population \nThese only apply when not \ninitialising from data\n
 12
 0.0
 1
 
 TEXTBOX
-1039
-36
-1123
-54
+1040
+49
+1124
+67
 Pandemic
 12
 0.0
 1
 
 TEXTBOX
-20
+15
+279
+99
 297
-104
-315
 Connectivity
 12
 0.0
 1
 
 TEXTBOX
-12
-451
-144
-470
+17
+444
+149
+463
 Control and testing
 12
 0.0
 1
 
 SLIDER
-9
-100
-181
-133
+14
+130
+186
+163
 pop-sd-multiplier
 pop-sd-multiplier
 0.01
@@ -2395,10 +2409,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-99
-144
-179
-189
+104
+175
+184
+220
 max-pop
 max [pop-0] of locales
 0
@@ -2406,10 +2420,10 @@ max [pop-0] of locales
 11
 
 MONITOR
-11
-145
-92
-190
+16
+175
+97
+220
 min-pop
 min [pop-0] of locales
 0
@@ -2417,10 +2431,10 @@ min [pop-0] of locales
 11
 
 SLIDER
-375
-343
-529
-376
+377
+338
+531
+371
 initial-alert-level
 initial-alert-level
 1
@@ -2443,10 +2457,10 @@ uniform-by-pop?
 -1000
 
 PLOT
-1042
-154
-1402
-437
+1043
+202
+1403
+485
 Cumulative totals
 Days
 Log (count + 1}
@@ -2463,10 +2477,10 @@ PENS
 "recovered" 1.0 0 -13840069 true "" "plot log (sum [cum-recovered] of locales + 1) 10"
 
 SLIDER
-10
-733
-170
-766
+12
+714
+172
+747
 test-rate-presymp
 test-rate-presymp
 0
@@ -2478,10 +2492,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-9
-773
-169
-806
+11
+754
+171
+787
 test-rate-gen
 test-rate-gen
 0
@@ -2493,10 +2507,10 @@ NIL
 HORIZONTAL
 
 INPUTBOX
-313
-435
-532
-495
+17
+377
+236
+437
 alert-levels-flow
 [0.1 0.05 0.025 0.01]
 1
@@ -2504,20 +2518,20 @@ alert-levels-flow
 String
 
 CHOOSER
-375
-382
-528
-427
+378
+438
+531
+483
 alert-policy
 alert-policy
-"global" "local" "local-random" "static"
+"static" "local" "global-mean" "global-max" "local-random"
 1
 
 MONITOR
 1045
-100
+147
 1119
-145
+192
 infected
 count cases
 0
@@ -2526,9 +2540,9 @@ count cases
 
 MONITOR
 1320
-101
+148
 1393
-146
+193
 recovered
 total-recovered
 0
@@ -2536,10 +2550,10 @@ total-recovered
 11
 
 INPUTBOX
-313
-499
-531
-559
+312
+493
+530
+553
 alert-level-triggers
 [0.0001 0.00025 0.0005 1]
 1
@@ -2547,10 +2561,10 @@ alert-level-triggers
 String
 
 SLIDER
-329
-603
-533
-636
+328
+602
+532
+635
 time-horizon
 time-horizon
 1
@@ -2568,15 +2582,15 @@ SWITCH
 785
 log-all-locales?
 log-all-locales?
-0
+1
 1
 -1000
 
 SLIDER
-329
-565
-531
-598
+328
+564
+530
+597
 start-lifting-quarantine
 start-lifting-quarantine
 0
@@ -2598,21 +2612,10 @@ Alert levels
 1
 
 MONITOR
-220
-647
-278
-692
-pop-lev-0
-sum [pop-0] of locales with [alert-level = 0]
-0
-1
-11
-
-MONITOR
-284
-647
-342
-692
+283
+646
+341
+691
 pop-lev-1
 sum [pop-0] of locales with [alert-level = 1]
 0
@@ -2620,10 +2623,10 @@ sum [pop-0] of locales with [alert-level = 1]
 11
 
 MONITOR
-346
-647
-404
-692
+344
+646
+402
+691
 pop-lev-2
 sum [pop-0] of locales with [alert-level = 2]
 0
@@ -2631,10 +2634,10 @@ sum [pop-0] of locales with [alert-level = 2]
 11
 
 MONITOR
-409
-647
-468
-692
+408
+646
+467
+691
 pop-lev-3
 sum [pop-0] of locales with [alert-level = 3]
 0
@@ -2642,10 +2645,10 @@ sum [pop-0] of locales with [alert-level = 3]
 11
 
 MONITOR
-474
-647
-533
-692
+473
+646
+532
+691
 pop-lev-4
 sum [pop-0] of locales with [alert-level = 4]
 0
@@ -2653,21 +2656,10 @@ sum [pop-0] of locales with [alert-level = 4]
 11
 
 MONITOR
-220
-698
-278
-743
-n-lev-0
-count locales with [alert-level = 0]
-0
-1
-11
-
-MONITOR
-284
-698
-342
-743
+283
+697
+341
+742
 n-lev-1
 count locales with [alert-level = 1]
 0
@@ -2675,10 +2667,10 @@ count locales with [alert-level = 1]
 11
 
 MONITOR
-346
-698
-404
-743
+344
+697
+402
+742
 n-lev-2
 count locales with [alert-level = 2]
 0
@@ -2686,10 +2678,10 @@ count locales with [alert-level = 2]
 11
 
 MONITOR
-409
-698
-468
-743
+408
+697
+467
+742
 n-lev-3
 count locales with [alert-level = 3]
 0
@@ -2697,10 +2689,10 @@ count locales with [alert-level = 3]
 11
 
 MONITOR
-474
-698
-533
-743
+473
+697
+532
+742
 n-lev-4
 count locales with [alert-level = 4]
 0
@@ -2708,10 +2700,10 @@ count locales with [alert-level = 4]
 11
 
 INPUTBOX
-1043
-746
-1228
-806
+538
+791
+723
+851
 log-folder
 ../staging-area/test
 1
@@ -2719,10 +2711,10 @@ log-folder
 String
 
 SWITCH
-10
-215
-196
-248
+11
+237
+197
+270
 initialise-from-nz-data?
 initialise-from-nz-data?
 0
@@ -2730,12 +2722,12 @@ initialise-from-nz-data?
 -1000
 
 MONITOR
-415
-750
-509
-795
+413
+749
+507
+794
 alert-activity
-alert-level-changes / count locales / ticks
+alert-level-changes / count locales
 4
 1
 11
@@ -2775,9 +2767,9 @@ NIL
 1
 
 BUTTON
-457
+459
 100
-530
+532
 134
 go-100
 repeat 100 [go]
@@ -2792,10 +2784,10 @@ NIL
 1
 
 SLIDER
-1045
-55
-1218
-88
+1046
+68
+1219
+101
 R-clin
 R-clin
 0
@@ -2808,9 +2800,9 @@ HORIZONTAL
 
 MONITOR
 1125
-99
+147
 1227
-144
+192
 clinical-cases
 count cases with [clinical?]
 0
@@ -2818,10 +2810,10 @@ count cases with [clinical?]
 11
 
 MONITOR
-1233
-100
-1315
-145
+1234
+147
+1316
+192
 in-hospital
 count cases with [in-hospital?]
 0
@@ -2829,10 +2821,10 @@ count cases with [in-hospital?]
 11
 
 INPUTBOX
-9
-472
-283
-580
+14
+465
+288
+573
 alert-levels-control
 pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]
 1
@@ -2840,10 +2832,10 @@ pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0
 String
 
 PLOT
-1043
-447
-1405
-741
+1044
+494
+1406
+788
 Daily counts
 Days
 Count
@@ -2860,10 +2852,10 @@ PENS
 "recovered" 1.0 0 -13840069 true "" "plot sum [new-recovered] of locales"
 
 SWITCH
-10
-640
-152
-673
+14
+633
+156
+666
 fast-isolation?
 fast-isolation?
 1
@@ -2888,10 +2880,10 @@ NIL
 1
 
 SLIDER
-1229
-55
-1393
-88
+1230
+68
+1394
+101
 p-clinical
 p-clinical
 0.5
@@ -2903,10 +2895,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1328
-6
-1392
-51
+1331
+19
+1395
+64
 R-mean
 p-clinical * R-clin + (1 - p-clinical) * 0.5 * R-clin
 3
@@ -2914,10 +2906,10 @@ p-clinical * R-clin + (1 - p-clinical) * 0.5 * R-clin
 11
 
 SLIDER
-1124
-13
-1296
-46
+238
+25
+410
+58
 new-exposures-arriving
 new-exposures-arriving
 0
@@ -2929,20 +2921,20 @@ NIL
 HORIZONTAL
 
 CHOOSER
-10
-589
-153
-634
+14
+582
+157
+627
 control-scenario
 control-scenario
 "optimistic" "realistic" "pessimistic" "other"
 1
 
 MONITOR
-179
-761
-261
-806
+175
+745
+257
+790
 daily tests
 sum [item 0 recent-tests] of locales
 0
@@ -2950,21 +2942,21 @@ sum [item 0 recent-tests] of locales
 11
 
 SWITCH
-163
-592
-311
-625
+19
+339
+167
+372
 gravity-weight?
 gravity-weight?
-0
+1
 1
 -1000
 
 SWITCH
-203
-216
-311
-249
+204
+238
+312
+271
 dhbs?
 dhbs?
 0
@@ -2972,24 +2964,24 @@ dhbs?
 -1000
 
 TEXTBOX
-204
-199
-304
-217
+205
+221
+305
+239
 DHBs or TAs
 12
 0.0
 1
 
 SLIDER
-22
-316
-234
-349
+18
+298
+230
+331
 max-connection-distance
 max-connection-distance
 150
-1000
+1200
 500.0
 25
 1
@@ -2997,63 +2989,137 @@ km
 HORIZONTAL
 
 MONITOR
-189
-378
-247
-423
-eff-R
+1120
+19
+1178
+64
+R-eff
 mean [infections-caused] of cases with [ticks - time-0 > 12]
 4
 1
 11
 
 SWITCH
-257
-130
-382
-164
+742
+809
+867
+843
 debug?
 debug?
 1
 1
 -1000
 
+TEXTBOX
+345
+750
+429
+795
+Alert level \nchanges \nper locale
+12
+0.0
+1
+
+TEXTBOX
+1182
+18
+1310
+63
+Mean number of \nadditional cases per \ncase past 12 days
+12
+0.0
+1
+
+TEXTBOX
+17
+667
+141
+697
+mean time to \nisolation 2.18 or 6
+12
+0.0
+1
+
+SLIDER
+10
+803
+172
+837
+test-rate-symp
+test-rate-symp
+0
+1
+0.5
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+173
+805
+257
+835
+NOT\nUSED
+12
+0.0
+1
+
+TEXTBOX
+328
+380
+537
+433
+NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
+12
+0.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
-
-(a general understanding of what the model is trying to show or explain)
+A model of a stochastic branching epidemic running across a number of regions (termed referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic.
 
 ## HOW IT WORKS
+The stochastic branching process is implemented as an `exposures` list maintained by each `locale`. This is a sorted list of exosure timestamps. Each model time step the most imminent exposures, i.e. those with a timestamp between the current time and the next (i.e. between `ticks` and `ticks + 1`) cause a `case` to arise in the corresponding locale.
 
-(what rules the agents use to create the overall behavior of the model)
+After all imminent exposures have been flushed out in all locales, then all current cases are allowed to give rise to new infections, adding more timestamps to the local `exposures` list, according to the model described in 
+
++ Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
+
+This is an involved procedure that occasionally leads to a new case whose time of initiation `time-0` is *before* the current time (consider this an as yet undetected case). 
+
+Because of the complexity, model initialisation is also involved, and not particularly well implemented at present. The best option is to experiment with the `initial-infections` setting to get behaviour in the first few time steps consistent with a scenario of interest.
 
 ## HOW TO USE IT
+The primary focus of the model is on different `alert-policy` settings and their effectiveness in maintaining control over the progress of the epidemic.
 
-(how to use the model, including a description of each of the items in the Interface tab)
+To get a feel for things proceed as follows:
 
-## THINGS TO NOTICE
++ Determine preferred settings for **initial-infections**, the model spatial structure (using **dhbs?**, **initialise-from-nz-data?**, **gravity-weight?**, and **max-connection-distance**), epidemic settings (**R-clin** and **p-clinical**), and  control settings (**control-scenario** and **fast-isolation?**). Leave these unchanged through the sequence described below. You may also find it helpful to set **random-seed** on and choose a **seed** value that reliably produces some interesting behaviour, that you can focus on.
 
-(suggested things for the user to notice while running the model)
+Now, work through the following experiments:
 
-## THINGS TO TRY
++ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Try interactively switching the levels (using the **initial-alert-level** control to get a feel for how difficult it is to get control of a  runaway epidemic in a controlled way (i.e. without just going straight to level 4.
++ Next try the 'global-mean', 'global-max' and 'local' **alert-policy** settings. 
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+These each work as follows:
+  
++ 'global-mean' uses the overall rate of positive tests summed across the system as a whole in conjunction with the **alert-trigger-levels** to switch all locales between levels. 
++ 'global-max' uses the maximum rate of positive tests in any one locale in conjunction with the **alert-trigger-levels** to switch all locales between levels. 
++ 'local' uses the locally calculate rate of positive tests to determine new alert levels applied only to the locale for which that rate has been calculated.
 
-## EXTENDING THE MODEL
+In all cases, moving down levels is 'sticky', i.e., levels will only move down one level at a time. Moving up will jump straight to the level consistent with the trigger-levels. **start-lifting-quarantine** and *time-horizon** affect when the model will first assess changing alert levels and both the time period over which positive test results are calculated and the frequency with which alert level changes are considered.
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+Experimenting with these settings you should see substantial differences in the measure of control over the epidemic, without much change in the overall time to control.
 
 ## CREDITS AND REFERENCES
+The inner workings of the stochastic branching process follow the description in 
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
+
+as far as it has been possible to implement.
+
+The model code has been written by David O'Sullivan, david.osullivan@vuw.ac.nz, with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available at http://southosullivan.com/misc/nz-dhb-branching-beta.0.7.html.
 @#$#@#$#@
 default
 true
@@ -3372,369 +3438,15 @@ NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="compare-locale-sizes-static" repetitions="1" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="730"/>
-    <metric>total-infected</metric>
-    <metric>total-recovered</metric>
-    <metric>total-dead</metric>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;static&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-presymptomatic">
-      <value value="0.025"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-general">
-      <value value="5.0E-4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="init-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="uniform-by-pop?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-exposed">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="infected-to-recovered">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="flow-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-0">
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-1">
-      <value value="0.02"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="presymptomatic-to-infected">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-symptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="compare-locale-sizes-local" repetitions="1" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="730"/>
-    <metric>total-infected</metric>
-    <metric>total-recovered</metric>
-    <metric>total-dead</metric>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-presymptomatic">
-      <value value="0.025"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-general">
-      <value value="5.0E-4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="init-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="uniform-by-pop?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-exposed">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="infected-to-recovered">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="flow-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-0">
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-1">
-      <value value="0.02"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="presymptomatic-to-infected">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-symptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="locale-sizes-vs-lockdown-counts" repetitions="1" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="730"/>
-    <metric>count turtles</metric>
-    <enumeratedValueSet variable="testing-rate-presymptomatic">
-      <value value="0.025"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-general">
-      <value value="5.0E-4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="uniform-by-pop?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="infected-to-recovered">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="flow-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-0">
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-1">
-      <value value="0.02"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="28"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="2500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="init-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="presymptomatic-to-infected">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-symptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-folder">
-      <value value="&quot;staging-area/retest-num-locales&quot;"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="locale-sizes-base-rates-under-static-lockdown-levels" repetitions="1" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="730"/>
-    <enumeratedValueSet variable="testing-rate-presymptomatic">
-      <value value="0.025"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-general">
-      <value value="5.0E-4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="uniform-by-pop?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="infected-to-recovered">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="flow-rate">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-0">
-      <value value="0.01"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="exposed-to-presymptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="cfr-1">
-      <value value="0.02"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="icu-cap">
-      <value value="500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="28"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="2500"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;static&quot;"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="init-alert-level" first="0" step="1" last="4"/>
-    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
-      <value value="0.15"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-icu">
-      <value value="0.0125"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.45"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-hosp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-R0">
-      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-      <value value="50"/>
-      <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="presymptomatic-to-infected">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="testing-rate-symptomatic">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
-    </enumeratedValueSet>
-  </experiment>
   <experiment name="branching-model-test" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="365"/>
     <enumeratedValueSet variable="initial-infected">
-      <value value="550"/>
+      <value value="1000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="control-scenario">
-      <value value="&quot;optimistic&quot;"/>
       <value value="&quot;realistic&quot;"/>
-      <value value="&quot;pessimistic&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="test-rate-presymp">
       <value value="0.05"/>
@@ -3746,11 +3458,17 @@ NetLogo 6.1.0
     <enumeratedValueSet variable="initialise-from-nz-data?">
       <value value="true"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="dhbs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="gravity-weight?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-connection-distance">
+      <value value="1200"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="new-exposures-arriving">
       <value value="0"/>
-      <value value="1"/>
-      <value value="2"/>
-      <value value="5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="p-clinical">
       <value value="0.667"/>
@@ -3759,9 +3477,6 @@ NetLogo 6.1.0
       <value value="false"/>
     </enumeratedValueSet>
     <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="connectivity">
-      <value value="&quot;ID1 ID2 cost weight weight2\n8 9 0.227069 4.40394 19.394684\n8 13 0.193776 5.160594 26.631733\n8 10 0.093423 10.704056 114.576815\n8 7 0.345958 2.890528 8.355151\n8 3 0.198042 5.04943 25.496742\n8 0 0.335123 2.983978 8.904126\n8 5 0.167174 5.98179 35.78181\n8 6 0.199933 5.001679 25.016795\n8 1 0.236637 4.225886 17.858116\n8 2 0.217664 4.594228 21.106932\n8 4 0.147367 6.785774 46.046732\n8 11 0.131898 7.581596 57.480603\n8 12 0.196719 5.083381 25.840766\n8 14 0.1913 5.227401 27.325723\n8 19 0.702723 1.423036 2.025031\n8 18 0.546829 1.828725 3.344233\n8 17 0.452491 2.209987 4.884042\n8 15 0.309359 3.23249 10.448993\n8 16 0.465441 2.148499 4.616047\n9 8 0.227069 4.40394 19.394684\n9 13 0.174988 5.714684 32.657614\n9 10 0.143124 6.986926 48.817133\n9 7 0.154221 6.484195 42.044779\n9 3 0.229013 4.366559 19.066835\n9 0 0.366094 2.731537 7.461295\n9 5 0.119525 8.366462 69.997687\n9 6 0.164249 6.088325 37.067702\n9 1 0.267608 3.736811 13.963754\n9 2 0.248636 4.021951 16.176089\n9 4 0.171767 5.821835 33.893763\n9 11 0.103927 9.622145 92.585678\n9 12 0.17682 5.655482 31.984481\n9 14 0.134911 7.412309 54.94233\n9 19 0.683935 1.462128 2.137818\n9 18 0.528041 1.893793 3.586451\n9 17 0.433703 2.305725 5.316368\n9 15 0.290571 3.441503 11.843945\n9 16 0.446653 2.238875 5.01256\n13 8 0.193776 5.160594 26.631733\n13 9 0.174988 5.714684 32.657614\n13 10 0.109831 9.104883 82.898897\n13 7 0.326629 3.061574 9.373238\n13 3 0.353972 2.825081 7.98108\n13 0 0.491053 2.036439 4.147086\n13 5 0.246502 4.056755 16.457265\n13 6 0.291226 3.433755 11.790674\n13 1 0.392567 2.547337 6.488927\n13 2 0.373594 2.676699 7.164719\n13 4 0.297856 3.357331 11.271675\n13 11 0.07454 13.415666 179.980082\n13 12 0.012081 82.771665 6851.148445\n13 14 0.053941 18.538685 343.68286\n13 19 0.509581 1.962397 3.851002\n13 18 0.353687 2.827358 7.993953\n13 17 0.259349 3.855804 14.867228\n13 15 0.116217 8.604601 74.039161\n13 16 0.272299 3.672432 13.486755\n10 8 0.093423 10.704056 114.576815\n10 9 0.143124 6.986926 48.817133\n10 13 0.109831 9.104883 82.898897\n10 7 0.294766 3.392522 11.509203\n10 3 0.257996 3.876026 15.023576\n10 0 0.395077 2.531151 6.406726\n10 5 0.164657 6.073228 36.884097\n10 6 0.209381 4.775982 22.810001\n10 1 0.296591 3.371649 11.368015\n10 2 0.277618 3.602066 12.974877\n10 4 0.207321 4.823434 23.265513\n10 11 0.047953 20.853585 434.871996\n10 12 0.112774 8.867253 78.628178\n10 14 0.107355 9.314917 86.767676\n10 19 0.618778 1.616088 2.611742\n10 18 0.462884 2.160367 4.667187\n10 17 0.368546 2.713362 7.362335\n10 15 0.225414 4.43628 19.680584\n10 16 0.381496 2.621257 6.87099\n7 8 0.345958 2.890528 8.355151\n7 9 0.154221 6.484195 42.044779\n7 13 0.326629 3.061574 9.373238\n7 10 0.294766 3.392522 11.509203\n7 3 0.270829 3.692362 13.633541\n7 0 0.40778 2.452302 6.013784\n7 5 0.182956 5.465785 29.874806\n7 6 0.157261 6.358875 40.435291\n7 1 0.309294 3.233172 10.453399\n7 2 0.290321 3.444457 11.864286\n7 4 0.225684 4.430975 19.633541\n7 11 0.255568 3.912846 15.310363\n7 12 0.328461 3.0445 9.268983\n7 14 0.286552 3.489765 12.178459\n7 19 0.835576 1.196779 1.43228\n7 18 0.679682 1.471275 2.164651\n7 17 0.585345 1.708395 2.918615\n7 15 0.442212 2.261358 5.113739\n7 16 0.598294 1.671418 2.793637\n3 8 0.198042 5.04943 25.496742\n3 9 0.229013 4.366559 19.066835\n3 13 0.353972 2.825081 7.98108\n3 10 0.257996 3.876026 15.023576\n3 7 0.270829 3.692362 13.633541\n3 0 0.146393 6.830927 46.661562\n3 5 0.127213 7.86081 61.792338\n3 6 0.113836 8.78457 77.168665\n3 1 0.047907 20.87392 435.720551\n3 2 0.028934 34.561005 1194.463096\n3 4 0.05795 17.256279 297.779174\n3 11 0.287624 3.476764 12.087889\n3 12 0.356916 2.801783 7.84999\n3 14 0.34128 2.930144 8.585745\n3 19 0.862919 1.158857 1.34295\n3 18 0.707025 1.414377 2.000461\n3 17 0.612687 1.632154 2.663925\n3 15 0.469555 2.129676 4.535518\n3 16 0.625637 1.59837 2.554787\n0 8 0.335123 2.983978 8.904126\n0 9 0.366094 2.731537 7.461295\n0 13 0.491053 2.036439 4.147086\n0 10 0.395077 2.531151 6.406726\n0 7 0.40778 2.452302 6.013784\n0 3 0.146393 6.830927 46.661562\n0 5 0.264294 3.783661 14.316091\n0 6 0.250787 3.98745 15.89976\n0 1 0.099803 10.019776 100.395905\n0 2 0.118023 8.472919 71.790359\n0 4 0.195031 5.127394 26.290168\n0 11 0.424705 2.354577 5.544034\n0 12 0.493996 2.024306 4.097815\n0 14 0.478361 2.090471 4.370069\n0 19 1 1 1\n0 18 0.844106 1.184685 1.403479\n0 17 0.749768 1.333745 1.778876\n0 15 0.606636 1.648435 2.717338\n0 16 0.762718 1.3111 1.718983\n5 8 0.167174 5.98179 35.78181\n5 9 0.119525 8.366462 69.997687\n5 13 0.246502 4.056755 16.457265\n5 10 0.164657 6.073228 36.884097\n5 7 0.182956 5.465785 29.874806\n5 3 0.127213 7.86081 61.792338\n5 0 0.264294 3.783661 14.316091\n5 6 0.045598 21.931 480.968778\n5 1 0.165808 6.031074 36.373859\n5 2 0.146836 6.810337 46.380692\n5 4 0.069967 14.292411 204.273008\n5 11 0.180154 5.550807 30.811463\n5 12 0.249446 4.008888 16.071183\n5 14 0.23381 4.276971 18.292478\n5 19 0.755449 1.323716 1.752223\n5 18 0.599555 1.667902 2.781898\n5 17 0.505218 1.979345 3.917806\n5 15 0.362085 2.76178 7.62743\n5 16 0.518168 1.929878 3.724428\n6 8 0.199933 5.001679 25.016795\n6 9 0.164249 6.088325 37.067702\n6 13 0.291226 3.433755 11.790674\n6 10 0.209381 4.775982 22.810001\n6 7 0.157261 6.358875 40.435291\n6 3 0.113836 8.78457 77.168665\n6 0 0.250787 3.98745 15.89976\n6 5 0.045598 21.931 480.968778\n6 1 0.1523 6.565968 43.111932\n6 2 0.133328 7.500292 56.254375\n6 4 0.068691 14.558031 211.936253\n6 11 0.224878 4.446857 19.774539\n6 12 0.29417 3.399399 11.555911\n6 14 0.278534 3.590222 12.889695\n6 19 0.800173 1.249729 1.561824\n6 18 0.644279 1.552122 2.409081\n6 17 0.549942 1.818375 3.306487\n6 15 0.406809 2.458155 6.042524\n6 16 0.562891 1.776541 3.156099\n1 8 0.236637 4.225886 17.858116\n1 9 0.267608 3.736811 13.963754\n1 13 0.392567 2.547337 6.488927\n1 10 0.296591 3.371649 11.368015\n1 7 0.309294 3.233172 10.453399\n1 3 0.047907 20.87392 435.720551\n1 0 0.099803 10.019776 100.395905\n1 5 0.165808 6.031074 36.373859\n1 6 0.1523 6.565968 43.111932\n1 2 0.019537 51.185638 2619.96956\n1 4 0.096545 10.357917 107.28645\n1 11 0.326218 3.065432 9.39687\n1 12 0.39551 2.52838 6.392707\n1 14 0.379875 2.632447 6.929776\n1 19 0.901514 1.109246 1.230426\n1 18 0.74562 1.341166 1.798726\n1 17 0.651282 1.535433 2.357555\n1 15 0.50815 1.967924 3.872725\n1 16 0.664232 1.505498 2.266525\n2 8 0.217664 4.594228 21.106932\n2 9 0.248636 4.021951 16.176089\n2 13 0.373594 2.676699 7.164719\n2 10 0.277618 3.602066 12.974877\n2 7 0.290321 3.444457 11.864286\n2 3 0.028934 34.561005 1194.463096\n2 0 0.118023 8.472919 71.790359\n2 5 0.146836 6.810337 46.380692\n2 6 0.133328 7.500292 56.254375\n2 1 0.019537 51.185638 2619.96956\n2 4 0.077572 12.89122 166.183542\n2 11 0.307246 3.254721 10.593207\n2 12 0.376538 2.655776 7.053146\n2 14 0.360902 2.770832 7.677511\n2 19 0.882541 1.133091 1.283896\n2 18 0.726648 1.376183 1.89388\n2 17 0.63231 1.581503 2.501153\n2 15 0.489177 2.044248 4.178951\n2 16 0.64526 1.549764 2.401768\n4 8 0.147367 6.785774 46.046732\n4 9 0.171767 5.821835 33.893763\n4 13 0.297856 3.357331 11.271675\n4 10 0.207321 4.823434 23.265513\n4 7 0.225684 4.430975 19.633541\n4 3 0.05795 17.256279 297.779174\n4 0 0.195031 5.127394 26.290168\n4 5 0.069967 14.292411 204.273008\n4 6 0.068691 14.558031 211.936253\n4 1 0.096545 10.357917 107.28645\n4 2 0.077572 12.89122 166.183542\n4 11 0.231507 4.319521 18.658259\n4 12 0.300799 3.32448 11.052167\n4 14 0.285164 3.50676 12.297363\n4 19 0.806802 1.239461 1.536263\n4 18 0.650909 1.536314 2.36026\n4 17 0.556571 1.796716 3.22819\n4 15 0.413438 2.418739 5.850301\n4 16 0.569521 1.755862 3.083052\n11 8 0.131898 7.581596 57.480603\n11 9 0.103927 9.622145 92.585678\n11 13 0.07454 13.415666 179.980082\n11 10 0.047953 20.853585 434.871996\n11 7 0.255568 3.912846 15.310363\n11 3 0.287624 3.476764 12.087889\n11 0 0.424705 2.354577 5.544034\n11 5 0.180154 5.550807 30.811463\n11 6 0.224878 4.446857 19.774539\n11 1 0.326218 3.065432 9.39687\n11 2 0.307246 3.254721 10.593207\n11 4 0.231507 4.319521 18.658259\n11 12 0.077483 12.906049 166.566106\n11 14 0.06579 15.199795 231.03376\n11 19 0.583487 1.713835 2.937232\n11 18 0.427593 2.338674 5.469394\n11 17 0.333255 3.000705 9.004233\n11 15 0.190123 5.259764 27.665114\n11 16 0.346205 2.888463 8.34322\n12 8 0.196719 5.083381 25.840766\n12 9 0.17682 5.655482 31.984481\n12 13 0.012081 82.771665 6851.148445\n12 10 0.112774 8.867253 78.628178\n12 7 0.328461 3.0445 9.268983\n12 3 0.356916 2.801783 7.84999\n12 0 0.493996 2.024306 4.097815\n12 5 0.249446 4.008888 16.071183\n12 6 0.29417 3.399399 11.555911\n12 1 0.39551 2.52838 6.392707\n12 2 0.376538 2.655776 7.053146\n12 4 0.300799 3.32448 11.052167\n12 11 0.077483 12.906049 166.566106\n12 14 0.04305 23.228547 539.565384\n12 19 0.51449 1.943674 3.777867\n12 18 0.358596 2.788654 7.776593\n12 17 0.264258 3.78418 14.320016\n12 15 0.121126 8.255886 68.159652\n12 16 0.277208 3.6074 13.013335\n14 8 0.1913 5.227401 27.325723\n14 9 0.134911 7.412309 54.94233\n14 13 0.053941 18.538685 343.68286\n14 10 0.107355 9.314917 86.767676\n14 7 0.286552 3.489765 12.178459\n14 3 0.34128 2.930144 8.585745\n14 0 0.478361 2.090471 4.370069\n14 5 0.23381 4.276971 18.292478\n14 6 0.278534 3.590222 12.889695\n14 1 0.379875 2.632447 6.929776\n14 2 0.360902 2.770832 7.677511\n14 4 0.285164 3.50676 12.297363\n14 11 0.06579 15.199795 231.03376\n14 12 0.04305 23.228547 539.565384\n14 19 0.55635 1.797431 3.230759\n14 18 0.400456 2.497155 6.235783\n14 17 0.306118 3.266715 10.671429\n14 15 0.162986 6.135514 37.64453\n14 16 0.319068 3.13413 9.822773\n19 8 0.702723 1.423036 2.025031\n19 9 0.683935 1.462128 2.137818\n19 13 0.509581 1.962397 3.851002\n19 10 0.618778 1.616088 2.611742\n19 7 0.835576 1.196779 1.43228\n19 3 0.862919 1.158857 1.34295\n19 0 1 1 1\n19 5 0.755449 1.323716 1.752223\n19 6 0.800173 1.249729 1.561824\n19 1 0.901514 1.109246 1.230426\n19 2 0.882541 1.133091 1.283896\n19 4 0.806802 1.239461 1.536263\n19 11 0.583487 1.713835 2.937232\n19 12 0.51449 1.943674 3.777867\n19 14 0.55635 1.797431 3.230759\n19 18 0.160045 6.248259 39.040736\n19 17 0.25124 3.980256 15.842441\n19 15 0.478771 2.088682 4.36259\n19 16 0.353693 2.827311 7.993686\n18 8 0.546829 1.828725 3.344233\n18 9 0.528041 1.893793 3.586451\n18 13 0.353687 2.827358 7.993953\n18 10 0.462884 2.160367 4.667187\n18 7 0.679682 1.471275 2.164651\n18 3 0.707025 1.414377 2.000461\n18 0 0.844106 1.184685 1.403479\n18 5 0.599555 1.667902 2.781898\n18 6 0.644279 1.552122 2.409081\n18 1 0.74562 1.341166 1.798726\n18 2 0.726648 1.376183 1.89388\n18 4 0.650909 1.536314 2.36026\n18 11 0.427593 2.338674 5.469394\n18 12 0.358596 2.788654 7.776593\n18 14 0.400456 2.497155 6.235783\n18 19 0.160045 6.248259 39.040736\n18 17 0.095346 10.488083 109.999876\n18 15 0.322877 3.097153 9.592358\n18 16 0.197799 5.055632 25.559411\n17 8 0.452491 2.209987 4.884042\n17 9 0.433703 2.305725 5.316368\n17 13 0.259349 3.855804 14.867228\n17 10 0.368546 2.713362 7.362335\n17 7 0.585345 1.708395 2.918615\n17 3 0.612687 1.632154 2.663925\n17 0 0.749768 1.333745 1.778876\n17 5 0.505218 1.979345 3.917806\n17 6 0.549942 1.818375 3.306487\n17 1 0.651282 1.535433 2.357555\n17 2 0.63231 1.581503 2.501153\n17 4 0.556571 1.796716 3.22819\n17 11 0.333255 3.000705 9.004233\n17 12 0.264258 3.78418 14.320016\n17 14 0.306118 3.266715 10.671429\n17 19 0.25124 3.980256 15.842441\n17 18 0.095346 10.488083 109.999876\n17 15 0.228539 4.375615 19.146003\n17 16 0.149045 6.709402 45.016071\n15 8 0.309359 3.23249 10.448993\n15 9 0.290571 3.441503 11.843945\n15 13 0.116217 8.604601 74.039161\n15 10 0.225414 4.43628 19.680584\n15 7 0.442212 2.261358 5.113739\n15 3 0.469555 2.129676 4.535518\n15 0 0.606636 1.648435 2.717338\n15 5 0.362085 2.76178 7.62743\n15 6 0.406809 2.458155 6.042524\n15 1 0.50815 1.967924 3.872725\n15 2 0.489177 2.044248 4.178951\n15 4 0.413438 2.418739 5.850301\n15 11 0.190123 5.259764 27.665114\n15 12 0.121126 8.255886 68.159652\n15 14 0.162986 6.135514 37.64453\n15 19 0.478771 2.088682 4.36259\n15 18 0.322877 3.097153 9.592358\n15 17 0.228539 4.375615 19.146003\n15 16 0.224747 4.44945 19.797603\n16 8 0.465441 2.148499 4.616047\n16 9 0.446653 2.238875 5.01256\n16 13 0.272299 3.672432 13.486755\n16 10 0.381496 2.621257 6.87099\n16 7 0.598294 1.671418 2.793637\n16 3 0.625637 1.59837 2.554787\n16 0 0.762718 1.3111 1.718983\n16 5 0.518168 1.929878 3.724428\n16 6 0.562891 1.776541 3.156099\n16 1 0.664232 1.505498 2.266525\n16 2 0.64526 1.549764 2.401768\n16 4 0.569521 1.755862 3.083052\n16 11 0.346205 2.888463 8.34322\n16 12 0.277208 3.6074 13.013335\n16 14 0.319068 3.13413 9.822773\n16 19 0.353693 2.827311 7.993686\n16 18 0.197799 5.055632 25.559411\n16 17 0.149045 6.709402 45.016071\n16 15 0.224747 4.44945 19.797603\n&quot;"/>
-    </enumeratedValueSet>
     <enumeratedValueSet variable="test-rate-gen">
       <value value="0.001"/>
     </enumeratedValueSet>
@@ -3787,20 +3502,16 @@ NetLogo 6.1.0
       <value value="&quot;../staging-area/test&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="fast-isolation?">
-      <value value="false"/>
       <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-alert-level">
-      <value value="2"/>
+      <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="time-horizon">
       <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="num-locales">
       <value value="100"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="dhbs">
-      <value value="&quot;ID name x y pop\n0 Northland 1640809 6107096 178500\n1 Waitemata 1704007 6060146 622350\n2 Auckland 1794796 5977673 538840\n3 Counties.Manukau 1752361 5844360 557790\n4 Waikato 1868112 5737176 417130\n5 Lakes 1897334 5643762 110040\n6 Bay.of.Plenty 1981173 5745420 236820\n7 Tairawhiti 2043079 5706142 48965\n8 Taranaki 1713209 5586361 119640\n9 Hawkes.Bay 1954114 5586840 165360\n10 Whanganui 1821171 5588135 64565\n11 MidCentral 1825104 5499583 178240\n12 Hutt.Valley 1790801 5403979 149270\n13 Capital.and.Coast 1727799 5412778 316620\n14 Wairarapa 1854566 5434609 44845\n15 Nelson.Marlborough 1581787 5353746 150280\n16 West.Coast 1466785 5271651 32445\n17 Canterbury 1493549 5180880 562870\n18 South.Canterbury 1352314 5083543 60025\n19 Southern 1279834 4972310 328230\n&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-flow">
       <value value="&quot;[0.1 0.05 0.025 0.01]&quot;"/>
@@ -3809,7 +3520,7 @@ NetLogo 6.1.0
       <value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="2"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-all-locales?">
       <value value="true"/>
