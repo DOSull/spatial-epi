@@ -939,7 +939,7 @@ end
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-  set model-name "nz-dhb-branching-beta.0.6-logging"
+  set model-name "nz-dhb-branching-beta.0.7-logging"
   set date-time replace date-and-time "." ":"
   let base-file-name (word model-name "-" date-time)
   set log-file-name (word base-file-name ".csv")
@@ -2321,7 +2321,7 @@ seed
 seed
 0
 100
-30.0
+28.0
 1
 1
 NIL
@@ -2347,7 +2347,7 @@ population
 population
 100000
 10000000
-4900000.0
+5000000.0
 100000
 1
 NIL
@@ -2525,7 +2525,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-1
+2
 
 MONITOR
 1045
@@ -2705,7 +2705,7 @@ INPUTBOX
 723
 851
 log-folder
-../staging-area/test
+foo
 1
 0
 String
@@ -2858,7 +2858,7 @@ SWITCH
 666
 fast-isolation?
 fast-isolation?
-1
+0
 1
 -1000
 
@@ -2982,7 +2982,7 @@ max-connection-distance
 max-connection-distance
 150
 1200
-500.0
+1200.0
 25
 1
 km
@@ -3453,7 +3453,8 @@ NetLogo 6.1.0
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-policy">
       <value value="&quot;local&quot;"/>
-      <value value="&quot;global&quot;"/>
+      <value value="&quot;global-max&quot;"/>
+      <value value="&quot;global-mean&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initialise-from-nz-data?">
       <value value="true"/>
@@ -3499,7 +3500,7 @@ NetLogo 6.1.0
       <value value="0.5"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-folder">
-      <value value="&quot;../staging-area/test&quot;"/>
+      <value value="&quot;../staging-area/compare-policies&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="fast-isolation?">
       <value value="true"/>
