@@ -155,7 +155,9 @@ to setup
   ;; initialisation of cases
   setup-cases
 
-  if log-all-locales? [ initialise-logging ]
+  if not netlogo-web? and log-all-locales? [
+;    initialise-logging
+  ]
 
   set labels-on? true
   redraw
@@ -292,6 +294,12 @@ to go
     update-plots
     stop
   ]
+  if (netlogo-web? and total-burden-remaining >= 10000) or ((not netlogo-web?) and total-burden-remaining >= 15000) [
+    output-show "Epidemic out of control, stopping model"
+    update-statistics
+    update-plots
+    stop
+  ]
   ;; add some new cases if appropriate
   repeat random-poisson new-exposures-arriving [
     create-subclinical-cases 1 [
@@ -302,19 +310,19 @@ to go
   run-one-day
 
   ;; log outcomes to file
-;  if log-all-locales? [
+  if not netlogo-web? and log-all-locales? [
 ;    file-open full-file-name
 ;    ask locales [
 ;      file-print output-locale
 ;    ]
 ;    file-close
-;  ]
+  ]
 
   ;; change alert levels
   if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
     change-alert-levels
   ]
-
+  reset-timer
   tick
 end
 
@@ -3948,10 +3956,10 @@ days
 100.0
 
 BUTTON
-443
-13
-535
-47
+440
+69
+532
+103
 NIL
 setup
 NIL
@@ -3965,10 +3973,10 @@ NIL
 1
 
 BUTTON
-442
-90
-533
-126
+439
+146
+530
+182
 go-one-week
 repeat 7 [go]\n
 NIL
@@ -3982,10 +3990,10 @@ NIL
 0
 
 BUTTON
-440
-202
-532
-238
+437
+258
+529
+294
 NIL
 go
 T
@@ -4014,10 +4022,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-270
-32
-419
-65
+274
+92
+423
+125
 initial-infected
 initial-infected
 0
@@ -4029,10 +4037,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-270
-167
-411
-201
+275
+227
+416
+261
 seed
 seed
 0
@@ -4044,10 +4052,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-271
-130
-410
-163
+276
+190
+415
+223
 use-seed?
 use-seed?
 1
@@ -4147,10 +4155,10 @@ min [pop-0] of locales
 11
 
 SLIDER
-377
-338
-531
-371
+374
+366
+528
+399
 initial-alert-level
 initial-alert-level
 1
@@ -4182,10 +4190,10 @@ PENS
 "recovered" 1.0 0 -13840069 true "" "plot log (sum [cum-recovered] of locales + 1) 10"
 
 SLIDER
-12
-714
-172
-747
+11
+708
+171
+741
 test-rate-presymp
 test-rate-presymp
 0
@@ -4197,10 +4205,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-754
-171
-787
+10
+748
+170
+781
 test-rate-gen
 test-rate-gen
 0
@@ -4223,14 +4231,14 @@ alert-levels-flow
 String
 
 CHOOSER
-378
-438
-531
-483
+375
+466
+528
+511
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-1
+0
 
 MONITOR
 1050
@@ -4255,10 +4263,10 @@ total-recovered
 11
 
 INPUTBOX
-312
-493
-530
-553
+309
+521
+527
+581
 alert-level-triggers
 [0.0001 0.00025 0.0005 1]
 1
@@ -4266,10 +4274,10 @@ alert-level-triggers
 String
 
 SLIDER
-328
-602
-532
-635
+325
+630
+529
+663
 time-horizon
 time-horizon
 1
@@ -4292,10 +4300,10 @@ log-all-locales?
 -1000
 
 SLIDER
-328
-564
-530
-597
+325
+592
+527
+625
 start-lifting-quarantine
 start-lifting-quarantine
 0
@@ -4307,20 +4315,20 @@ days
 HORIZONTAL
 
 TEXTBOX
-457
-320
-536
-338
+454
+348
+533
+366
 Alert levels
 12
 0.0
 1
 
 MONITOR
-283
-646
-341
-691
+280
+674
+338
+719
 pop-lev-1
 sum [pop-0] of locales with [alert-level = 1]
 0
@@ -4328,10 +4336,10 @@ sum [pop-0] of locales with [alert-level = 1]
 11
 
 MONITOR
-344
-646
-402
-691
+341
+674
+399
+719
 pop-lev-2
 sum [pop-0] of locales with [alert-level = 2]
 0
@@ -4339,10 +4347,10 @@ sum [pop-0] of locales with [alert-level = 2]
 11
 
 MONITOR
-408
-646
-467
-691
+405
+674
+464
+719
 pop-lev-3
 sum [pop-0] of locales with [alert-level = 3]
 0
@@ -4350,10 +4358,10 @@ sum [pop-0] of locales with [alert-level = 3]
 11
 
 MONITOR
-473
-646
-532
-691
+470
+674
+529
+719
 pop-lev-4
 sum [pop-0] of locales with [alert-level = 4]
 0
@@ -4361,10 +4369,10 @@ sum [pop-0] of locales with [alert-level = 4]
 11
 
 MONITOR
-283
-697
-341
-742
+280
+725
+338
+770
 n-lev-1
 count locales with [alert-level = 1]
 0
@@ -4372,10 +4380,10 @@ count locales with [alert-level = 1]
 11
 
 MONITOR
-344
-697
-402
-742
+341
+725
+399
+770
 n-lev-2
 count locales with [alert-level = 2]
 0
@@ -4383,10 +4391,10 @@ count locales with [alert-level = 2]
 11
 
 MONITOR
-408
-697
-467
-742
+405
+725
+464
+770
 n-lev-3
 count locales with [alert-level = 3]
 0
@@ -4394,10 +4402,10 @@ count locales with [alert-level = 3]
 11
 
 MONITOR
-473
-697
-532
-742
+470
+725
+529
+770
 n-lev-4
 count locales with [alert-level = 4]
 0
@@ -4416,10 +4424,10 @@ foo
 String
 
 MONITOR
-413
-749
-507
-794
+410
+777
+504
+822
 alert-activity
 alert-level-changes / count locales
 4
@@ -4461,10 +4469,10 @@ NIL
 1
 
 BUTTON
-441
-164
-533
-198
+438
+220
+530
+254
 go-13-weeks
 ; no-display\nrepeat 91 [go]\n; display
 NIL
@@ -4557,10 +4565,10 @@ fast-isolation?
 -1000
 
 BUTTON
-441
-128
-533
-162
+438
+184
+530
+218
 go-4-weeks
 ; no-display\nrepeat 28 [go]\n; display
 NIL
@@ -4600,10 +4608,10 @@ mean [base-R] of all-cases
 11
 
 SLIDER
-236
-237
-408
-270
+240
+297
+412
+330
 new-exposures-arriving
 new-exposures-arriving
 0
@@ -4625,10 +4633,10 @@ control-scenario
 1
 
 MONITOR
-175
-745
-257
-790
+178
+708
+260
+753
 daily tests
 sum [item 0 recent-tests] of locales
 0
@@ -4673,10 +4681,10 @@ debug?
 -1000
 
 TEXTBOX
-345
-750
-429
-795
+342
+778
+426
+823
 Alert level \nchanges \nper locale
 12
 0.0
@@ -4693,10 +4701,10 @@ mean time to \nisolation 2.18 or 6
 1
 
 TEXTBOX
-327
-389
-536
-436
+324
+417
+533
+464
 NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
 12
 0.0
@@ -4769,7 +4777,7 @@ SWITCH
 833
 colour-by-cluster?
 colour-by-cluster?
-0
+1
 1
 -1000
 
@@ -4784,10 +4792,10 @@ setup-method
 0
 
 BUTTON
-442
-55
-533
-89
+439
+111
+530
+145
 go-one-day
 go
 NIL
@@ -4801,10 +4809,10 @@ NIL
 0
 
 BUTTON
-440
-265
-531
-299
+436
+298
+527
+332
 reset
 clear-all\n
 NIL
@@ -4818,56 +4826,80 @@ NIL
 1
 
 TEXTBOX
-267
-96
-414
-130
+272
+156
+419
+190
 Using a seed value you \ncan repeat a run exactly
 12
 0.0
 1
 
 TEXTBOX
-235
-220
-379
-238
+240
+280
+384
+298
 Border control not total
 12
 0.0
 1
 
 TEXTBOX
-232
-70
-424
-88
+236
+130
+428
+148
 If not initialising from case data
 12
 0.0
 1
 
+TEXTBOX
+13
+834
+515
+864
+Not to be used for decision making!
+24
+15.0
+1
+
+OUTPUT
+236
+13
+532
+59
+12
+
 @#$#@#$#@
 ## WHAT IS IT?
-A model of a stochastic branching epidemic running across a number of regions (termed referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic.
+A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (termed referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in 
+
+Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
+
+Locales are the white circles distributed across the model world, scaled according to their population. Connectivity between locales is shown by blue arrows. Within each locale cases of COVID19 are shown as either clinical (red dots) or subclinical (blue dots). Transmission events between cases are shown as grey arrows.
 
 ## HOW IT WORKS
-The stochastic branching process is implemented as an `exposures` list held by each `case` whether **subclincal** or **clinical**. This is a sorted list of exosure timestamps initialised when the case itself is instantiated, either independently or from another case's exposure list.
+The stochastic branching process is implemented as a list of `exposures-to-come` list which contains (timestamp, case) pairs and is maintained ordered by exposure timestamp. 
 
-Each model time step the most imminent exposures, i.e. those with a timestamp between the current time and the next (i.e. between `ticks` and `ticks + 1`) cause a new `case` to arise, most often in the same `locale` as the case responsible for the exposure, but also with some probability in a different connected locale based on the connectivity between locales.
+Each model time step the most imminent exposures, i.e. those with a timestamp between the current time and the next (i.e. between `ticks` and `ticks + 1`) cause a new `case` to arise, most often in the same `locale` as the case responsible for the exposure, but also with some probability in a different connected locale based on the connectivity between locales. When a new case arises it generates its own new exposures to come and these are added to the global list.
 
 After all imminent exposures have been flushed out across all cases, the model does general upkeep (updating statistics, etc,) and moves on to the next `tick`.
 
+The model keeps track of transmission events between cases (although the initial set of cases in the model are not connected in this way). This means that after a burn in period of about 4 weeks, you can inspect 'clusters' of cases by clicking the **show-clusters** button. (This is experimental at the moment, but shows the potential of a model that represents individual cases in this way). Revert back to the geographical view with the **back-to-geography** button.
+
 ## HOW TO USE IT
-The primary focus of the model is on different `alert-policy` settings and their effectiveness in maintaining control over the progress of the epidemic.
+The primary focus of the model is on different **alert-policy** settings and their effectiveness in maintaining control over the progress of the epidemic.
 
 To get a feel for things proceed as follows:
 
-+ Determine preferred settings for **initial-infections**, the model spatial structure (using **dhbs?**, **initialise-from-nz-data?**, **gravity-weight?**, and **max-connection-distance**), epidemic settings (**R-clin** and **p-clinical**), and  control settings (**control-scenario** and **fast-isolation?**). Leave these unchanged through the sequence described below. You may also find it helpful to set **random-seed** on and choose a **seed** value that reliably produces some interesting behaviour, that you can focus on.
++ Determine preferred settings for **initial-infections**, the model spatial structure (using options in the **setup-method** drop-down), **gravity-weight?**, and **max-connection-distance**), epidemic settings (**R-clin** and **p-clinical**), and  control settings (**control-scenario** and **fast-isolation?**). Leave these unchanged through the sequence described below. You may also find it helpful to set **random-seed** on and choose a **seed** value that reliably produces some interesting behaviour, that you can focus on.
 
 Now, work through the following experiments:
 
-+ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Try interactively switching the levels (using the **initial-alert-level** control to get a feel for how difficult it is to get control of a  runaway epidemic in a controlled way (i.e. without just going straight to level 4.
++ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Keep in mind that alert levels below 4 the pandemic takes hold quickly and the model slows dramatically. So at lower alert levels, run only one week or even one day at a time! 
+* In 'static' mode, try interactively switching the alert level (using the **initial-alert-level** control. This will give you a feel for how difficult it is to get control of a runaway epidemic in a managed way (i.e. without just going straight to level 4.
 + Next try the 'global-mean', 'global-max' and 'local' **alert-policy** settings. 
 
 These each work as follows:
@@ -4876,9 +4908,11 @@ These each work as follows:
 + 'global-max' uses the maximum rate of positive tests in any one locale in conjunction with the **alert-trigger-levels** to switch all locales between levels. 
 + 'local' uses the locally calculate rate of positive tests to determine new alert levels applied only to the locale for which that rate has been calculated.
 
-In all cases, moving down levels is 'sticky', i.e., levels will only move down one level at a time. Moving up will jump straight to the level consistent with the trigger-levels. **start-lifting-quarantine** and *time-horizon** affect when the model will first assess changing alert levels and both the time period over which positive test results are calculated and the frequency with which alert level changes are considered.
+In all cases, moving down levels is 'sticky', i.e., levels will only move down one level at a time. Moving up will jump straight to the level consistent with the trigger-levels. **start-lifting-quarantine** and *time-horizon** affect when the model will first assess changing alert levels and the time period over which positive test results are calculated and the frequency with which alert level changes are considered.
 
-Experimenting with these settings you should see substantial differences in the measure of control over the epidemic, without much change in the overall time to control.
+Experimenting with these settings you should see variation in the time to control over the epidemic, the amount of time different areas spend at different alert levels, the amount of alert activity (i.e. how often alert levels change), as well as in the degree of control of the epidemic and likelihood of new outbreaks. 
+
+Our observations tend to suggest that the 'local' alert policy provides the best combination of control while reducing time spent by large areas at the most restrictive lockdown levels. Understanding the most appropriate scale for such local level control is a major challenge, as it requires good data on actual and likely rates of movement within and between locales in different lockdown levels. Smaller locales *appear* to be better, but this effect may be an artefact of them effectively under-representing likely rates of movement between locales since the model as currently implemented does not attempt to make movement comparable across different granularities. The best we can say is that this is a question well worth exploring.
 
 ## NOTE
 The core branching process model is based on this one
@@ -4900,7 +4934,7 @@ Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. ht
 
 as far as it has been possible to implement.
 
-The model code has been written by David O'Sullivan, david.osullivan@vuw.ac.nz, with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available at http://southosullivan.com/misc/
+The model code has been written by David O'Sullivan, david.osullivan@vuw.ac.nz, with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available at http://southosullivan.com/misc/. and you will find earlier versions at http://github.com/DOSull/spatial-epi.
 @#$#@#$#@
 default
 true
