@@ -4011,7 +4011,7 @@ SLIDER
 17
 150
 191
-184
+183
 num-locales
 num-locales
 20
@@ -4041,7 +4041,7 @@ SLIDER
 275
 227
 416
-261
+260
 seed
 seed
 0
@@ -4786,7 +4786,7 @@ CHOOSER
 11
 13
 225
-59
+58
 setup-method
 setup-method
 "NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Random landscape"
@@ -4875,14 +4875,14 @@ OUTPUT
 
 @#$#@#$#@
 ## WHAT IS IT?
-A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (termed referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in 
+A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in 
 
-Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
+Plank et al. 2020. [Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand]( https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/) (last accessed 15 April 2020).
 
 Locales are the white circles distributed across the model world, scaled according to their population. Connectivity between locales is shown by blue arrows. Within each locale cases of COVID19 are shown as either clinical (red dots) or subclinical (blue dots). Transmission events between cases are shown as grey arrows.
 
 ## HOW IT WORKS
-The stochastic branching process is implemented as a list of `exposures-to-come` list which contains (timestamp, case) pairs and is maintained ordered by exposure timestamp. 
+The stochastic branching process is implemented as a list of `exposures-to-come` list which contains (timestamp, case) pairs and is maintained ordered by exposure timestamp.
 
 Each model time step the most imminent exposures, i.e. those with a timestamp between the current time and the next (i.e. between `ticks` and `ticks + 1`) cause a new `case` to arise, most often in the same `locale` as the case responsible for the exposure, but also with some probability in a different connected locale based on the connectivity between locales. When a new case arises it generates its own new exposures to come and these are added to the global list.
 
@@ -4899,43 +4899,37 @@ To get a feel for things proceed as follows:
 
 Now, work through the following experiments:
 
-+ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Keep in mind that alert levels below 4 the pandemic takes hold quickly and the model slows dramatically. So at lower alert levels, run only one week or even one day at a time! 
++ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Keep in mind that alert levels below 4 the pandemic takes hold quickly and the model slows dramatically. So at lower alert levels, run only one week or even one day at a time!
 * In 'static' mode, try interactively switching the alert level (using the **initial-alert-level** control. This will give you a feel for how difficult it is to get control of a runaway epidemic in a managed way (i.e. without just going straight to level 4.
-+ Next try the 'global-mean', 'global-max' and 'local' **alert-policy** settings. 
++ Next try the 'global-mean', 'global-max' and 'local' **alert-policy** settings.
 
 These each work as follows:
-  
-+ 'global-mean' uses the overall rate of positive tests summed across the system as a whole in conjunction with the **alert-trigger-levels** to switch all locales between levels. 
-+ 'global-max' uses the maximum rate of positive tests in any one locale in conjunction with the **alert-trigger-levels** to switch all locales between levels. 
+
++ 'global-mean' uses the overall rate of positive tests summed across the system as a whole in conjunction with the **alert-trigger-levels** to switch all locales between levels.
++ 'global-max' uses the maximum rate of positive tests in any one locale in conjunction with the **alert-trigger-levels** to switch all locales between levels.
 + 'local' uses the locally calculate rate of positive tests to determine new alert levels applied only to the locale for which that rate has been calculated.
 
 In all cases, moving down levels is 'sticky', i.e., levels will only move down one level at a time. Moving up will jump straight to the level consistent with the trigger-levels. **start-lifting-quarantine** and *time-horizon** affect when the model will first assess changing alert levels and the time period over which positive test results are calculated and the frequency with which alert level changes are considered.
 
-Experimenting with these settings you should see variation in the time to control over the epidemic, the amount of time different areas spend at different alert levels, the amount of alert activity (i.e. how often alert levels change), as well as in the degree of control of the epidemic and likelihood of new outbreaks. 
+Experimenting with these settings you should see variation in the time to control over the epidemic, the amount of time different areas spend at different alert levels, the amount of alert activity (i.e. how often alert levels change), as well as in the degree of control of the epidemic and likelihood of new outbreaks.
 
 Our observations tend to suggest that the 'local' alert policy provides the best combination of control while reducing time spent by large areas at the most restrictive lockdown levels. Understanding the most appropriate scale for such local level control is a major challenge, as it requires good data on actual and likely rates of movement within and between locales in different lockdown levels. Smaller locales *appear* to be better, but this effect may be an artefact of them effectively under-representing likely rates of movement between locales since the model as currently implemented does not attempt to make movement comparable across different granularities. The best we can say is that this is a question well worth exploring.
 
 ## NOTE
 The core branching process model is based on this one
 
-+ Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
++ Plank et al. 2020. [Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand]( https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/) (last accessed 15 April 2020).
 
-However, it is important to note a difference between this version (beta-0-9) and previous versions in relation to that source model. In the current version, all exposures that a case will give rise to over its 'lifetime' are initialised when the case is instantiated. The number of exposures is based on the maximum unconstrained R-0 of the epidemic. Reductions in R-0 due to quarantines, reductions in the suceptible population of a locale, and isolation due to contact tracing only affect the probability that an exposure will become a case _at the time when that exposure is pulled from the queue_. This is almost certainly the same as the complicated definite integral procedure described in the above model description, _in effect_ but may offend purists. 
+However, it is important to note a difference between this version (beta-0-9) and previous versions in relation to that source model. In the current version, all exposures that a case will give rise to over its 'lifetime' are initialised when the case is instantiated. The number of exposures is based on the maximum unconstrained R-0 of the epidemic. Reductions in R-0 due to quarantines, reductions in the suceptible population of a locale, and isolation due to contact tracing only affect the probability that an exposure will become a case _at the time when that exposure is pulled from the queue_. This is almost certainly the same as the complicated definite integral procedure described in the above model description, _in effect_ but may offend purists.
 
-It has the significant of avoiding tricky situations where new cases occur retropspectively well before the time when an exposure is drawn from the queue. This in turn will make it easier to consider individual level variation in R values, and also to build infection networks showing linkages between cases, if that is desired in later versions. It has also substantially reduced the complexity of the code and made it easier to maintain and/or translate to a different platform. 
+It has the significant of avoiding tricky situations where new cases occur retropspectively well before the time when an exposure is drawn from the queue. This in turn will make it easier to consider individual level variation in R values, and also to build infection networks showing linkages between cases, if that is desired in later versions. It has also substantially reduced the complexity of the code and made it easier to maintain and/or translate to a different platform.
 
-A further advantage is that this makes model initialisation from the case data publicly provided by NZ's Ministry of Health, while not perfect, can provide a reasonable approximation to the DHB level data on 15 April 2020. 
+A further advantage is that this makes model initialisation from the case data publicly provided by NZ's Ministry of Health, while not perfect, can provide a reasonable approximation to the DHB level data on 15 April 2020.
 
 It is also _possible_ that this is how the model is implemented in the above cited paper anyway, but the code for that model is (at time of writing) unavailable.
 
 ## CREDITS AND REFERENCES
-The inner workings of the stochastic branching process follow the description in 
-
-Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand. https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/ (last accessed 15 April 2020).
-
-as far as it has been possible to implement.
-
-The model code has been written by David O'Sullivan, david.osullivan@vuw.ac.nz, with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available at http://southosullivan.com/misc/. and you will find earlier versions at http://github.com/DOSull/spatial-epi.
+Model code written by [David O'Sullivan](mailto:david.osullivan@vuw.ac.nz), with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available [here](http://southosullivan.com/misc/). and you will find earlier versions at my [github site](http://github.com/DOSull/spatial-epi).
 @#$#@#$#@
 default
 true
