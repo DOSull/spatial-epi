@@ -294,20 +294,21 @@ to go
     update-plots
     stop
   ]
-  if (netlogo-web? and total-burden-remaining >= 10000) or ((not netlogo-web?) and total-burden-remaining >= 15000) [
-    output-show "Epidemic out of control, stopping model"
-    update-statistics
-    update-plots
-    stop
-  ]
   ;; add some new cases if appropriate
   repeat random-poisson new-exposures-arriving [
     create-subclinical-cases 1 [
       initialise-case (ticks + random-float 1) p-clinical false nobody
     ]
   ]
+  reset-timer
   ;; run one day of the model
   run-one-day
+  if timer > 2.5 [
+    output-print "Epidemic appears out of control"
+    output-print "or model has slowed for some other"
+    output-print "reason, stopping execution"
+    stop
+  ]
 
   ;; log outcomes to file
   if not netlogo-web? and log-all-locales? [
@@ -4163,7 +4164,7 @@ initial-alert-level
 initial-alert-level
 1
 4
-2.0
+4.0
 1
 1
 NIL
@@ -4869,7 +4870,7 @@ OUTPUT
 236
 13
 532
-59
+64
 12
 
 @#$#@#$#@
