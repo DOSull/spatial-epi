@@ -166,20 +166,34 @@ end
 ;; main initialisation of locales
 to setup-locales
   ;; using data in various strings at end of the model code
-  ifelse initialise-from-nz-data? [
-    setup-locales-from-string get-locales-data dhbs?
-    setup-connections-from-string get-connections-data dhbs?
-  ]
-  [ ;; or random initialisation
+  ifelse setup-method = "Random landscape" [
     setup-locales-parametrically
     setup-connections-parametrically
   ]
+  [
+    ifelse position "NZ DHBs" setup-method = 0 [
+      setup-locales-from-string get-locales-data true
+      setup-connections-from-string get-connections-data true
+    ]
+    [
+      setup-locales-from-string get-locales-data false
+      setup-connections-from-string get-connections-data false
+    ]
+  ]
+;  ifelse initialise-from-nz-data? [
+;    setup-locales-from-string get-locales-data dhbs?
+;    setup-connections-from-string get-connections-data dhbs?
+;  ]
+;  [ ;; or random initialisation
+;    setup-locales-parametrically
+;    setup-connections-parametrically
+;  ]
 end
 
 ;; initialisation of cases
 to setup-cases
   ;; from NZ MoH data at DHB level
-  ifelse initialise-cases-from-data? and initialise-from-nz-data? and dhbs? [
+  ifelse member? "MoH data" setup-method [
     initialise-cases-from-string get-cases-data
     ;; apologies for this hard coded hack! 728 recovered cases at the
     ;; time of reporting, but publicly available data does not show which ones
@@ -1287,14 +1301,11 @@ to-report log-file-header
 
   set parameters lput join-list (list "use.seed?" use-seed?) "," parameters
   set parameters lput join-list (list "seed" seed) "," parameters
-  set parameters lput join-list (list "initialise.from.nz.data?" initialise-from-nz-data?) "," parameters
-  set parameters lput join-list (list "initialise.cases.from.data?" initialise-cases-from-data?) "," parameters
-  set parameters lput join-list (list "dhbs?" dhbs?) "," parameters
+  set parameters lput join-list (list "setup.method" setup-method) "," parameters
   set parameters lput join-list (list "gravity.weight?" gravity-weight?) "," parameters
   set parameters lput join-list (list "max-connection.distance" max-connection-distance) "," parameters
 
   set parameters lput join-list (list "initial.infected" initial-infected) "," parameters
-  set parameters lput join-list (list "uniform.by.pop?" uniform-by-pop?) "," parameters
   set parameters lput join-list (list "initial.alert.level" initial-alert-level) "," parameters
   set parameters lput join-list (list "alert.policy" alert-policy) "," parameters
   set parameters lput join-list (list "start.lifting.quarantine" start-lifting-quarantine) "," parameters
@@ -3937,10 +3948,10 @@ days
 100.0
 
 BUTTON
-458
-22
-532
-56
+443
+13
+535
+47
 NIL
 setup
 NIL
@@ -3954,12 +3965,12 @@ NIL
 1
 
 BUTTON
-459
-178
+442
+90
 533
-213
-go-10
-; no-display\nrepeat 10 [go]\n; display
+126
+go-one-week
+repeat 7 [go]\n
 NIL
 1
 T
@@ -3968,13 +3979,13 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 BUTTON
-459
-62
-533
-97
+440
+202
+532
+238
 NIL
 go
 T
@@ -3985,13 +3996,13 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 SLIDER
-14
-93
-188
-126
+17
+150
+191
+184
 num-locales
 num-locales
 20
@@ -4003,10 +4014,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-380
-225
-529
-258
+270
+32
+419
+65
 initial-infected
 initial-infected
 0
@@ -4018,10 +4029,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-236
-104
-409
-137
+270
+167
+411
+201
 seed
 seed
 0
@@ -4033,10 +4044,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-237
-68
-376
-101
+271
+130
+410
+163
 use-seed?
 use-seed?
 1
@@ -4044,10 +4055,10 @@ use-seed?
 -1000
 
 SLIDER
-14
-55
-187
-88
+17
+112
+190
+145
 population
 population
 100000
@@ -4059,11 +4070,11 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-15
-7
-215
-55
-Population \nThese only apply when not \ninitialising from data\n
+18
+79
+191
+108
+These only apply when not \ninitialising from data\n
 12
 0.0
 1
@@ -4099,10 +4110,10 @@ Control and testing
 1
 
 SLIDER
-14
-130
-186
-163
+17
+187
+189
+220
 pop-sd-multiplier
 pop-sd-multiplier
 0.01
@@ -4114,10 +4125,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-104
-175
-184
-220
+106
+228
+186
+273
 max-pop
 max [pop-0] of locales
 0
@@ -4125,10 +4136,10 @@ max [pop-0] of locales
 11
 
 MONITOR
-16
-175
-97
-220
+18
+228
+99
+273
 min-pop
 min [pop-0] of locales
 0
@@ -4149,17 +4160,6 @@ initial-alert-level
 1
 NIL
 HORIZONTAL
-
-SWITCH
-380
-267
-527
-300
-uniform-by-pop?
-uniform-by-pop?
-0
-1
--1000
 
 PLOT
 1049
@@ -4415,17 +4415,6 @@ foo
 0
 String
 
-SWITCH
-11
-237
-197
-270
-initialise-from-nz-data?
-initialise-from-nz-data?
-0
-1
--1000
-
 MONITOR
 413
 749
@@ -4472,12 +4461,12 @@ NIL
 1
 
 BUTTON
-459
-100
-532
-134
-go-100
-; no-display\nrepeat 100 [go]\n; display
+441
+164
+533
+198
+go-13-weeks
+; no-display\nrepeat 91 [go]\n; display
 NIL
 1
 T
@@ -4486,7 +4475,7 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 SLIDER
 1052
@@ -4568,12 +4557,12 @@ fast-isolation?
 -1000
 
 BUTTON
-458
-139
-532
-173
-go-50
-; no-display\nrepeat 50 [go]\n; display
+441
+128
+533
+162
+go-4-weeks
+; no-display\nrepeat 28 [go]\n; display
 NIL
 1
 T
@@ -4582,7 +4571,7 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 SLIDER
 1235
@@ -4611,10 +4600,10 @@ mean [base-R] of all-cases
 11
 
 SLIDER
-238
-25
-410
-58
+236
+237
+408
+270
 new-exposures-arriving
 new-exposures-arriving
 0
@@ -4656,27 +4645,6 @@ gravity-weight?
 0
 1
 -1000
-
-SWITCH
-204
-238
-294
-271
-dhbs?
-dhbs?
-0
-1
--1000
-
-TEXTBOX
-205
-221
-305
-239
-DHBs or TAs
-12
-0.0
-1
 
 SLIDER
 18
@@ -4732,27 +4700,6 @@ TEXTBOX
 NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
 12
 0.0
-1
-
-SWITCH
-205
-178
-406
-211
-initialise-cases-from-data?
-initialise-cases-from-data?
-0
-1
--1000
-
-TEXTBOX
-207
-147
-398
-178
-This only works for DHBs\nData to 15 April per MoH
-12
-15.0
 1
 
 SLIDER
@@ -4825,6 +4772,80 @@ colour-by-cluster?
 0
 1
 -1000
+
+CHOOSER
+11
+13
+225
+59
+setup-method
+setup-method
+"NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Random landscape"
+0
+
+BUTTON
+442
+55
+533
+89
+go-one-day
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+440
+265
+531
+299
+reset
+clear-all\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+267
+96
+414
+130
+Using a seed value you \ncan repeat a run exactly
+12
+0.0
+1
+
+TEXTBOX
+235
+220
+379
+238
+Border control not total
+12
+0.0
+1
+
+TEXTBOX
+232
+70
+424
+88
+If not initialising from case data
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
