@@ -1,5 +1,7 @@
 # spatial-epi
-A collection of models in [Netlogo](tree/master/) along with other bits and pieces for thinking through how to do spatial epidemic spread modelling. Three sets of models are available here as detailed below.
+A collection of models in [Netlogo](tree/master/) along with other bits and pieces for thinking through how to do spatial epidemic spread modelling, in a time of COVID.
+
+Three sets of models are available here as detailed below.
 
 ## Distributed stochastic branching model
 This model is a **spatially distributed** (i.e. regionalised) reimplementation of the stochastic [branching process](https://en.wikipedia.org/wiki/Branching_process) model described in
@@ -14,7 +16,7 @@ There is a fair amount of detail on the workings of the model in the **Model Inf
 
 The core operation of this model is based on maintaining a time-sorted list of new exposure-time, parent-case pairs. Each model time step, the exposures on this list scheduled to occur that day are drawn, causing a new case to be instantiated. During case initialisation the exposures that will arise from this new case are created and inserted in the exposures list in time-stamp order. The number of new cases added to the list is given by a random draw from the Poisson distribution Pois(*R*<sub>0</sub>). The time to exposure of those cases is drawn from a Weibull distribution as detailed in the Plank et al. paper. When a new exposure is drawn from the list, it *might not occur* dependent on prevailing lockdown conditions at the time, and also on whether or not the case causing it has been isolated due to contact tracing.
 
-Because the model is spatially explicit, new cases may arise in the same locale or with low probability in a connected other location. Because the parent-case of each case during a model run is known, after it is possible to assemble clusters of infection chains and display these in the model.
+Because the model is spatially explicit, new cases may arise in the same locale or with low probability in a connected other location. Because the parent-case of each case during a model run is known, it is possible to assemble clusters of infection chains and display these in the model.
 
 ### Example results
 The desktop version of the model, which runs in the [Netlogo desktop app](http://ccl.northwestern.edu/netlogo/) can log results for locales and cases over time during a model run for subsequent analysis.
@@ -47,7 +49,7 @@ The corresponding evolution of total population living under various levels of l
 <img src='population-in-alert-levels-by-alert-policy.png' width=800>
 
 ## Distributed SEIR models
-These earlier models regionalised [SEIR models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology). More specifically these have been coded to with most of the parameters reported for the [Te Pūnaha Matatini SEIR model for COVID-19 in New Zealand, as described here](https://www.tepunahamatatini.ac.nz/2020/03/26/suppression-and-mitigation-strategies-for-control-of-covid-19-in-new-zealand/), although results are unlikely to match exactly given the entirely different platform used, the rapidly evolving situation, and the limitations of verbal descriptions (with or without equations) as a way to unambiguously describe computational models.
+These earlier models are **spatially explicit** (i.e. regionalised) [SEIR models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology). More specifically these have been coded to broadly match most of the parameters reported for the [Te Pūnaha Matatini SEIR model for COVID-19 in New Zealand, as described here](https://www.tepunahamatatini.ac.nz/2020/03/26/suppression-and-mitigation-strategies-for-control-of-covid-19-in-new-zealand/), although results are unlikely to match exactly given the entirely different platform used, the rapidly evolving situation, and the limitations of verbal descriptions (with or without equations) as a way to unambiguously describe computational models.
 
 The major change from the TPM model is that compartment model runs in individual regions (called 'locales' in the model) linked by a network of connections that mean that depending on travel restrictions that might be imposed or not, disease may reemerge in locales previously cleared.
 
