@@ -63,14 +63,14 @@ A version that can also be initialised with NZ DHB data:
 And with NZ Territorial Authority data:
 + [`nz-ta-seir-08.nlogo`](models/nz-ta-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/nz-ta-seir-08-web.html) for the web version.
 
-Results from this model similar to those shown above have been observed.
+Results from this model similar to those shown above for the branching process model have been observed.
 
 #### Earlier versions of the distributed SEIR model
 These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows. You can find these in the [models](models) folder:
 + `distributed-seir-07.nlogo` as previous but with automatic control of lockdown levels according to a variety of strategies
 + `distributed-seir-06.nlogo` as previous but with correction to locale sizes to match total population more closely
 + `distributed-seir-05.nlogo` fixed lockdown levels and testing added
-+ `distributed-seir-04.nlogo` reverts back to the main sequence and allows for locales to vary in size and variance, under paramterisable control
++ `distributed-seir-04.nlogo` reverts back to the main sequence and allows for locales to vary in size and variance, under parameterisable control
 
 Three even earlier versions have excessive mortality, which has been corrected in later models. The later models are more worth spending time with.
 + `distributed-seir-03.nlogo` is an attempt to enable the model to read in real health management zones. It works, but requires some idiosyncratic code for the file reading.
