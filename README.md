@@ -2,7 +2,7 @@
 A collection of models in [Netlogo](tree/master/) along with other bits and pieces for thinking through how to do spatial epidemic spread modelling. Three sets of models are available here as detailed below.
 
 ## Distributed stochastic branching model
-This model is a reimplementation of the stochastic [branching process](https://en.wikipedia.org/wiki/Branching_process) model described in
+This model is a **spatially distributed** (i.e. regionalised) reimplementation of the stochastic [branching process](https://en.wikipedia.org/wiki/Branching_process) model described in
 
 Plank, M. J., R. N. Binny, S. C. Hendy, A. Lustig, and A. James. 2020. [A stochastic model for COVID-19 spread and the effects of Alert Level 4 in Aotearoa New Zealand](https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/).
 
