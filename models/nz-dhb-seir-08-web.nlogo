@@ -709,7 +709,6 @@ end
 to-report join-list [lst sep]
   report reduce [ [a b] -> (word a sep b) ] lst
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 540
@@ -1589,6 +1588,16 @@ NIL
 NIL
 NIL
 NIL
+1
+
+TEXTBOX
+1317
+720
+1478
+861
+Model parameters not tuned to any specific location.\nExercise caution in using model to inform decision making.
+16
+15.0
 1
 
 @#$#@#$#@

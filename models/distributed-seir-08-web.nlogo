@@ -1391,6 +1391,16 @@ count locales with [alert-level = 4]
 1
 11
 
+TEXTBOX
+20
+732
+510
+774
+Model parameters not tuned to any specific location.\nExercise caution in using model to inform decision making.
+16
+15.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
