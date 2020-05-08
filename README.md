@@ -3,6 +3,8 @@ A collection of models in [Netlogo](tree/master/) along with other bits and piec
 
 Three sets of models are available here as detailed below.
 
+**Note that the two epidemic models below produce different results**. We believe this is also true of the two models from which they are derived. These models produce results that appear to match well with those of the models on which they are based.
+
 ## Distributed stochastic branching model
 This model is a **spatially distributed** (i.e. regionalised) reimplementation of the stochastic [branching process](https://en.wikipedia.org/wiki/Branching_process) model described in
 
@@ -10,7 +12,7 @@ Plank, M. J., R. N. Binny, S. C. Hendy, A. Lustig, and A. James. 2020. [A stocha
 
 insofar as is possible given the limitations of that description and lack of access to detailed New Zealand cases and arrivals data prior to lockdown.
 
-+ [`nz-dhb-branching-beta-0-12.nlogo`](models/nz-dhb-branching-beta-0-12.nlogo?raw=true) Click [this link](http://southosullivan.com/misc/nz-dhb-branching-beta-0-12.html) for the web version.
++ [Distributed branching process model](models/distributed-branching-process-RC-logging.nlogo?raw=true) Click [this link](http://southosullivan.com/misc/distributed-branching-process-RC-web.html) for the web version.
 
 There is a fair amount of detail on the workings of the model in the **Model Info** tab, and detailed code comments throughout.
 
@@ -55,15 +57,9 @@ The major change from the TPM model is that compartment model runs in individual
 
 These models are more appropriate than the branching process model for handling potentially much more serious outbreaks (branching process models are favoured in the early stages of an epidemic when cases remain rare, something which thankfully continues to be true in New Zealand, at the time of writing.)
 
-+ [`distributed-seir-08.nlogo`](models/distributed-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/distributed-seir-08-web.html) for a web version.
++ [Distributed SEIR model](models/distributed-seir-RC-logging.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/distributed-seir-RC-web.html) for a web version.
 
-A version that can also be initialised with NZ DHB data:
-+ [`nz-dhb-seir-08.nlogo`](models/nz-dhb-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/nz-dhb-seir-08-web.html) for the web version.
-
-And with NZ Territorial Authority data:
-+ [`nz-ta-seir-08.nlogo`](models/nz-ta-seir-08.nlogo?raw=true). Click [this link](http://southosullivan.com/misc/nz-ta-seir-08-web.html) for the web version.
-
-Results from this model similar to those shown above for the branching process model have been observed.
+Results from this model qualitatively similar to those shown above for the branching process model have been observed.
 
 #### Earlier versions of the distributed SEIR model
 These have been 'frozen' for reference purposes and because 'releases' aren't really appropriate to this project. Brief details as follows. You can find these in the [models](models) folder:
