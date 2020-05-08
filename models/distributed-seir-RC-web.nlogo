@@ -4462,8 +4462,8 @@ Pandemic
 TEXTBOX
 11
 842
-481
-885
+509
+886
 Model parameters not tuned to any specific location.\nExercise caution in using model to inform decision making.
 16
 15.0
