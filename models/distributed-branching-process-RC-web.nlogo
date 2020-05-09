@@ -1320,7 +1320,7 @@ end
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-;  set model-name "branching-process-beta-0-13-logging"
+;  set model-name "branching-process-RC-logging"
 ;  set date-time replace date-and-time "." ":"
 ;  let base-file-name (word model-name "-" date-time)
 ;  set base-file-name join-list split-string base-file-name " " "-"
@@ -1362,7 +1362,7 @@ to-report output-locale
 end
 
 to-report output-locale-header
-  report "ticks,who,name,pop.0,susceptible,cum.cases,cum.infected,cum.recovered,new.cases,new.infected,new.recovered,new.tests.alert.level"
+  report "ticks,who,name,pop.0,susceptible,cum.cases,cum.infected,cum.recovered,new.cases,new.infected,new.recovered,new.tests,alert.level"
 end
 
 
@@ -5044,7 +5044,7 @@ OUTPUT
 
 @#$#@#$#@
 ## WHAT IS IT?
-A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in 
+A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in
 
 Plank et al. 2020. [Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand]( https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/) (last accessed 15 April 2020).
 

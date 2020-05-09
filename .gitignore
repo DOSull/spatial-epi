@@ -1,4 +1,3 @@
-results/
 other-stuff/
 *.shp
 *.prj
@@ -10,6 +9,7 @@ other-stuff/
 *.gpkg
 *.tmp.nlogo
 *.RData
-*.RHistory
+*.Rhistory
+*.Rproj.user/
 staging-area/
 test/

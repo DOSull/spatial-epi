@@ -1320,7 +1320,7 @@ end
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-  set model-name "branching-process-beta-0-13-logging"
+  set model-name "distributed-branching-process-RC-logging"
   set date-time replace date-and-time "." ":"
   let base-file-name (word model-name "-" date-time)
   set base-file-name join-list split-string base-file-name " " "-"
@@ -1362,7 +1362,7 @@ to-report output-locale
 end
 
 to-report output-locale-header
-  report "ticks,who,name,pop.0,susceptible,cum.cases,cum.infected,cum.recovered,new.cases,new.infected,new.recovered,new.tests.alert.level"
+  report "ticks,who,name,pop.0,susceptible,cum.cases,cum.infected,cum.recovered,new.cases,new.infected,new.recovered,new.tests,alert.level"
 end
 
 
@@ -4185,7 +4185,7 @@ num-locales
 num-locales
 20
 200
-20.0
+100.0
 10
 1
 NIL
@@ -4200,7 +4200,7 @@ initial-infected
 initial-infected
 0
 1000
-10.0
+1000.0
 10
 1
 NIL
@@ -4408,7 +4408,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-0
+1
 
 MONITOR
 1054
@@ -4465,7 +4465,7 @@ SWITCH
 793
 log-all-locales?
 log-all-locales?
-1
+0
 1
 -1000
 
@@ -4588,7 +4588,7 @@ INPUTBOX
 723
 860
 log-folder
-foo
+../results/random-locales-num-locales
 1
 0
 String
@@ -4730,7 +4730,7 @@ SWITCH
 666
 fast-isolation?
 fast-isolation?
-0
+1
 1
 -1000
 
@@ -4959,7 +4959,7 @@ CHOOSER
 setup-method
 setup-method
 "NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Costa Rica" "Random landscape"
-1
+4
 
 BUTTON
 439
@@ -5491,7 +5491,7 @@ NetLogo 6.1.0
       <value value="600"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-folder">
-      <value value="&quot;alert-policies-experiment&quot;"/>
+      <value value="&quot;../results/alert-policies-experiment&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-alert-level">
       <value value="4"/>
@@ -5579,7 +5579,7 @@ NetLogo 6.1.0
       <value value="600"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-folder">
-      <value value="&quot;random-locales-num-locales&quot;"/>
+      <value value="&quot;../results/random-locales-num-locales&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-alert-level">
       <value value="4"/>

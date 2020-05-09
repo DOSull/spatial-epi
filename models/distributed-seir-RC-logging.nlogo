@@ -933,7 +933,7 @@ end
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-  set model-name "distributed-seir-beta-0-9-logging"
+  set model-name "distributed-seir-RC-logging"
   set date-time replace date-and-time "." ":"
   let base-file-name (word model-name "-" date-time)
   set base-file-name join-list split-string base-file-name " " "-"
