@@ -1199,47 +1199,53 @@ end
 ;; HANDY DISTRIBUTIONS!
 ;; -----------------------------------
 ;;
-to-report random-binomial [n p]
-  if p = 0 [ report 0 ]
-  if p = 1 [ report n ]
-  if n * p >= 10 and p < 0.25 [
-    report random-poisson (n * p)
-  ]
-  report length filter [x -> x < p] n-values n [random-float 1]
-end
-
-;; this code from the numpy.random.binomial code
-;; see https://github.com/numpy/numpy/blob/master/numpy/random/src/distributions/distributions.c
-;; unfortunately, I think it needs more moving parts to avoid not terminating unpredictably from
-;; time to time when n is large! So back to the quick and dirty approach above it is!
+;; --------------------------------------------------------------
+;; NOTE
+;; using random-poisson approximation for efficiency when n large
+;; --------------------------------------------------------------
+;;
 ;to-report random-binomial [n p]
 ;  if p = 0 [ report 0 ]
 ;  if p = 1 [ report n ]
-;  let q 1 - p
-;  let init-px exp (n * ln q)
-;  let np n * p
-;
-;  let x 0
-;  let px init-px
-;  let u random-float 1
-;
-;  let bound min (list (n) (np + 10 * sqrt(np * q + 1)))
-;
-;  while [u > px] [
-;    set x x + 1
-;    ifelse x > bound [
-;      set x 0
-;      set px init-px
-;      set u random-float 1
-;    ]
-;    [
-;      set u u - px
-;      set px ((n - x + 1) * p * px) / (x * q)
-;    ]
+;  if n * p >= 10 and p < 0.25 [
+;    report random-poisson (n * p)
 ;  ]
-;  report x
+;  report length filter [x -> x < p] n-values n [random-float 1]
 ;end
-;
+
+
+;; Based on code from https://stackoverflow.com/questions/23561551/a-efficient-binomial-random-number-generator-code-in-java#23574723
+;; which implements one of Devroye's algorithms - and not the super complicated BTPE one of Kach... something
+to-report random-binomial [n p]
+; the Java code
+;public static int getBinomial(int n, double p) {
+;   double log_q = Math.log(1.0 - p);
+;   int x = 0;
+;   double sum = 0;
+;   for(;;) {
+;      sum += Math.log(Math.random()) / (n - x);
+;      if(sum < log_q) {
+;         return x;
+;      }
+;      x++;
+;   }
+  ; need to trap p = 0 and p = 1
+  if p = 1 [ report n ]
+  if p = 0 [ report 0 ]
+  let ln-q ln (1 - p)
+  let x 0
+  let s 0
+  ; also need to avoid x = n
+  while [x < n] [
+    set s s + ln (random-float 1) / (n - x)
+    if s < ln-q [
+      report x
+    ]
+    set x x + 1
+  ]
+  report x
+end
+
 
 ;; https://stackoverflow.com/questions/33611708/random-number-generator-with-generalized-pareto-distribution-and-weilbull-distri
 to-report random-weibull [shp scale lower-limit upper-limit]
