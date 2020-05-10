@@ -225,7 +225,6 @@ to setup-cases
 end
 
 to burn-in-model
-  no-display
   let save-initial-alert-level initial-alert-level
   let save-alert-policy alert-policy
   let save-new-exposures-arriving new-exposures-arriving
@@ -240,7 +239,6 @@ to burn-in-model
     tick
   ]
   set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
-  display
 ;  let survival-rate initial-infected / count clinical-cases
 ;  ask all-cases [
 ;    if random-float 1 > survival-rate [
