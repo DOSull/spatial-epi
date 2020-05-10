@@ -30,12 +30,14 @@ locales-own [
   new-infected       ;; number of new cases all types this time step
   new-recovered      ;; number of newly recovered cases this time step
 
-  recent-new-cases   ;; list of recent new cases per time-horizon setting
-  recent-tests       ;; list of recent numbers of tests in this locale per time-horizon
+  recent-positive-tests   ;; list of recent new positive tests
+  recent-tests            ;; list of recent numbers of tests in this locale
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
   my-control         ;; control level
+  my-clinical-cases
+  my-subclinical-cases
 
   name               ;; locale name where applicable
 
@@ -271,15 +273,6 @@ to update-statistics
     set cum-cases cum-cases + new-cases
     set cum-infected cum-infected + new-infected
     set cum-recovered cum-recovered + new-recovered
-
-    set recent-new-cases fput new-cases recent-new-cases
-
-    ;; testing is based on random draws from different pools of clinical, subclinical
-    ;; and general population
-    let new-tests new-cases + ;; new-cases we assume all got tested (which may be optimistic)
-        random-poisson ((new-infected - new-cases) * test-rate-presymp) + ;; new subclinical cases assume a lower rate
-        random-poisson (susceptible * test-rate-gen) ;; and for general population a lower rate still
-    set recent-tests fput new-tests recent-tests
   ]
 end
 
@@ -320,10 +313,6 @@ end
 
 ;; the basic update cycle
 to run-one-day
-  ;; change alert levels
-  if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
-    change-alert-levels
-  ]
   ;; add some new cases if appropriate
   repeat random-poisson new-exposures-arriving [
     create-subclinical-cases 1 [
@@ -335,7 +324,17 @@ to run-one-day
   instantiate-exposures ticks
   ;; progress all cases
   progress-cases (ticks + 1)
+
   update-statistics
+  update-testing
+
+  ;; change alert levels
+  if ticks >= start-lifting-quarantine and
+       ticks >= time-horizon and
+       (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+    change-alert-levels
+  ]
+
   redraw
 end
 
@@ -520,16 +519,31 @@ to change-alert-levels
 end
 
 
+to update-testing
+  ask locales [
+    if debug? [
+      show (list ticks (length recent-tests) (length recent-positive-tests))
+    ]
+    let new-tests count (my-clinical-cases with [got-tested?]) +
+                  random-poisson (susceptible * pop-test-rate)
+    set recent-tests fput new-tests recent-tests
+
+    let positive-tests count (turtle-set my-clinical-cases my-subclinical-cases) with [tested-positive?]
+    set recent-positive-tests fput positive-tests recent-positive-tests
+  ]
+end
+
 to-report get-positive-test-rate
-  let current-new-cases recent-total recent-new-cases
   let current-tests recent-total recent-tests
+  let current-positive-tests recent-total recent-positive-tests
   ifelse current-tests > 0 [
-    report current-new-cases / current-tests
+    report current-positive-tests / current-tests
   ]
   [ ;; if there have been no tests, then caution dictates a high rate
     report 1
   ]
 end
+
 
 ;; sum of most recent numbers based on time-horizon setting
 to-report recent-total [lst]
@@ -574,6 +588,14 @@ end
 ;; is case isolated?
 to-report is-isolated?
   report breed = clinical-cases and ticks > t-isolation
+end
+
+to-report got-tested?
+  report breed = clinical-cases and (floor t-isolation) = ticks
+end
+
+to-report tested-positive?
+  report got-tested? and random-float 1 < false-negative-rate
 end
 
 ;; check for case recovery
@@ -674,11 +696,13 @@ to initialise-locales
     set cum-cases 0
     set cum-recovered 0
 
-    set recent-new-cases []
+    set recent-positive-tests []
     set recent-tests []
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
+    set my-clinical-cases turtle-set nobody
+    set my-subclinical-cases turtle-set nobody
   ]
 end
 
@@ -830,9 +854,15 @@ to initialise-case [t p-clin old-case? cause]
   ;; clinical or subclinical
   ifelse random-float 1 < p-clin [
     initialise-clinical-case
+    ask my-locale [
+      set my-clinical-cases (turtle-set my-clinical-cases myself)
+    ]
   ]
   [
     initialise-subclinical-case
+    ask my-locale [
+      set my-subclinical-cases (turtle-set my-subclinical-cases myself)
+    ]
   ]
   ;; update the locale's stats
   ask my-locale [
@@ -864,13 +894,11 @@ to initialise-clinical-case
   set base-R random-normal R-clin R-sd
   set color red
 
-  set t-onset-1 random-gamma 5.5 0.95         ;; TPM paper
-  ifelse fast-isolation? [
-    set t-onset-2 random-exponential 2.18     ;; TPM paper
-  ]
-  [
-    set t-onset-2 random-exponential 6        ;; TPM paper
-  ]
+
+  set t-onset-1 random-gamma 5.5 0.95                ;; this is the time to symptomaticity
+  ;; TPM paper uses two settings for this - 2.18 (fast) or 6 (slow)
+  set t-onset-2 random-exponential time-to-detection ;; this is time to detection/isolation
+
   set t-isolation t-0 + t-onset-1 + t-onset-2 ;; get isolated after being contact traced
   set hospitalised? random-float 1 < 0.078    ;; probability of hospitalisation from TPM model
   set t-leave-hospital t-enter-hospital + random-exponential 10
@@ -1412,9 +1440,8 @@ to-report log-file-header
   set parameters lput join-list (list "time.horizon" time-horizon) "," parameters
 
   set parameters lput join-list (list "alert.levels.flow" alert-levels-flow) "," parameters
-
-  set parameters lput join-list (list "test.rate.presymp" test-rate-presymp) "," parameters
-  set parameters lput join-list (list "test.rate.gen" test-rate-gen) "," parameters
+  set parameters lput join-list (list "pop.test.rate" pop-test-rate) "," parameters
+  set parameters lput join-list (list "false.negative.rate" false-negative-rate) "," parameters
 
   set parameters lput join-list (list "population" population) "," parameters
   set parameters lput join-list (list "num.locales" num-locales) "," parameters
@@ -1424,7 +1451,7 @@ to-report log-file-header
   set parameters lput join-list (list "flow.levels" flow-levels) "," parameters
   set parameters lput join-list (list "control.levels" control-levels) "," parameters
   set parameters lput join-list (list "control.scenario" control-scenario) "," parameters
-  set parameters lput join-list (list "fast.isolation" fast-isolation?) "," parameters
+  set parameters lput join-list (list "time.to.detection" time-to-detection) "," parameters
 
   set parameters lput join-list (list "R.clin" r-clin) "," parameters
   set parameters lput join-list (list "p.clinical" p-clinical) "," parameters
@@ -4206,7 +4233,7 @@ initial-infected
 initial-infected
 0
 1000
-10.0
+210.0
 10
 1
 NIL
@@ -4221,7 +4248,7 @@ seed
 seed
 0
 100
-30.0
+40.0
 1
 1
 NIL
@@ -4234,7 +4261,7 @@ SWITCH
 213
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
@@ -4364,29 +4391,15 @@ PENS
 "cases" 1.0 0 -2674135 true "" "plot log (sum [cum-cases] of locales + 1) 10"
 "infected" 1.0 0 -13345367 true "" "plot log (sum [cum-infected] of locales + 1) 10"
 "recovered" 1.0 0 -13840069 true "" "plot log (sum [cum-recovered] of locales + 1) 10"
-
-SLIDER
-11
-708
-171
-741
-test-rate-presymp
-test-rate-presymp
-0
-0.1
-0.05
-0.001
-1
-NIL
-HORIZONTAL
+"tests" 1.0 0 -955883 true "" "plot log (sum [sum recent-tests] of locales  + 1) 10"
 
 SLIDER
 10
-748
+713
 170
-781
-test-rate-gen
-test-rate-gen
+746
+pop-test-rate
+pop-test-rate
 0
 0.002
 0.001
@@ -4484,7 +4497,7 @@ start-lifting-quarantine
 start-lifting-quarantine
 0
 56
-7.0
+14.0
 1
 1
 days
@@ -4728,17 +4741,7 @@ PENS
 "cases" 1.0 0 -2674135 true "" "plot sum [new-cases] of locales"
 "infected" 1.0 0 -13345367 true "" "plot sum [new-infected] of locales"
 "recovered" 1.0 0 -13840069 true "" "plot sum [new-recovered] of locales"
-
-SWITCH
-14
-633
-156
-666
-fast-isolation?
-fast-isolation?
-0
-1
--1000
+"pos-tests" 1.0 0 -955883 true "" "plot sum [first recent-positive-tests] of locales"
 
 BUTTON
 438
@@ -4809,10 +4812,10 @@ control-scenario
 1
 
 MONITOR
-178
-708
-260
-753
+175
+703
+257
+748
 daily tests
 sum [item 0 recent-tests] of locales
 0
@@ -5047,6 +5050,36 @@ OUTPUT
 532
 64
 12
+
+SLIDER
+10
+755
+171
+789
+false-negative-rate
+false-negative-rate
+0.8
+1
+0.95
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+632
+171
+666
+time-to-detection
+time-to-detection
+0
+10
+2.18
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
