@@ -5,12 +5,6 @@
 ;;
 ;; One of a series of models, see https://github.com/DOSull/spatial-epi
 ;;
-;; References in comments to TPM model refer to this paper on which
-;; branching process is based:
-;;
-;; Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand.
-;; https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/
-;;
 ;; David O'Sullivan
 ;; david.osullivan@vuw.ac.nz
 ;;
@@ -22,115 +16,81 @@ locales-own [
   pop-0              ;; intial population
 
   susceptible        ;; susceptible
-  cum-cases          ;; clinical cases
-  cum-infected       ;; all cases
-  cum-recovered      ;; recovered
+  exposed            ;; exposed
+  presymptomatic     ;; infected but not symptomatic
+  infected           ;; infected and symptomatic
+  recovered          ;; recovered
+  dead               ;; dead
 
-  new-cases          ;; number of new clinical cases this time step
-  new-infected       ;; number of new cases all types this time step
-  new-recovered      ;; number of newly recovered cases this time step
+  new-exposed
+  new-presymptomatic
+  new-infected
+  new-recovered
+  new-dead
 
-  recent-positive-tests   ;; list of recent new positive tests
-  recent-tests            ;; list of recent numbers of tests in this locale
+  recent-new-cases
+  recent-tests
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
-  my-control         ;; control level
-  my-clinical-cases
-  my-subclinical-cases
+  my-control         ;; controls local R0 and
+  my-trans-coeff     ;; local transmission rate
 
-  name               ;; locale name where applicable
+  name
 
   geo-x              ;; geographical coordinates provided
   geo-y              ;; pref. in projected coordinate system
 ]
 
-;; asyptomatic cases
-breed [subclinical-cases subclinical-case]
-subclinical-cases-own [
-  base-R             ;; the base reproductive rate for this case
-  t-0                ;; time of exposure in days from model start (can be negative)
-  t-recover          ;; time at which this case will recover
-
-  my-locale          ;; locale in which this case resides
-  exposures          ;; list of exposure times which this case will cause
-  infections-caused  ;; count of secondary infections due to this case
-
-  map-x map-y        ;; stored coordinates of this case to allow return to geographic view
-]
-
-;; symptomatic cases, which will be a proportion p-clinical of all cases
-breed [clinical-cases clinical-case]
-clinical-cases-own [
-  base-R
-  t-0
-  t-recover
-
-  t-onset-1          ;; time of onset of symptoms (per TPM model)
-  t-onset-2          ;; time from onset to identification and isolation
-  t-isolation        ;; t-onset-1 + t-onset-2
-
-  hospitalised?      ;; if this case will be hospitalised
-  t-enter-hospital   ;; t-onset-1 if hospitalised
-  t-leave-hospital   ;; time at which case will exit hospital
-
-  my-locale
-  exposures          ;; NOTE: this may not need to be retained... since it is immediately dumped into the global list
-  infections-caused
-
-  map-x map-y
-]
-
 ;; visualization aid to show alert levels
 breed [levels level]
 levels-own [
-  alert-level        ;; value 1, 2, 3, 4
-  my-locale          ;; the locale to which this level applies
+  alert-level
+  my-locale
 ]
 
 ;; connections to other locales
 directed-link-breed [connections connection]
 connections-own [
-  w                  ;; inverse distance weighted _outward_ from each locale
+  w                  ;; inverse distance weighted _outward_ from each
   gw                 ;; gravity weighted (pop1 x pop2 / dist^2)
   my-flow-rate
 ]
 
 
-;; transmissions from case to case
-;; note that no transmissions exist at model initialisation
-;; so transmission networks are only relevant after a 'burn-in' period of ~30 days
-directed-link-breed [transmissions transmission]
-
 globals [
-  ;; consolidated list of [timestamp case] pairs where each case may have _multiple_
-  ;; entries in the list, one for every timestamp
-  exposures-to-come
+  n-icu
+  cfr-tot
 
-  control-levels    ;; list by alert-level of relative suppression of R
-  flow-levels       ;; list by alert-level of relative rates of movement along connections
-  trigger-levels    ;; list by alert-level of positive testing rate
+  control-levels         ;; R0 multipliers associated with the alert levels
+  flow-levels
+  trigger-levels
 
-  total-cases       ;; clinical cases
-  total-infected    ;; all cases
-  total-recovered   ;; recovered
+  mean-R0           ;; pop weighted mean R0
+  mean-trans-coeff  ;; pop weighted mean trans coeff
 
-  case-lifetime
-  list-of-cases
+  total-exposed            ;; exposed
+  total-presymptomatic     ;; infected but not symptomatic
+  total-infected           ;; infected and symptomatic
+  total-recovered          ;; recovered
+  total-dead               ;; dead
 
-  ;; data logging details
+  total-new-exposed
+  total-new-presymptomatic
+  total-new-infected
+  total-new-recovered
+  total-new-dead
+
   log-header-file-name
   log-file-name
   full-file-name
   date-time
   model-name
+  labels-on?
 
-  labels-on?        ;; show locale labels or not
-
-  alert-level-changes  ;; count of the total number of alert-level changes per locale
+  alert-level-changes
 ]
 
-;; model initialisation
 to setup
   clear-all
   reset-ticks
@@ -139,9 +99,6 @@ to setup
 
   ;; random seed for PRNG for replicability
   if use-seed? [random-seed seed]
-
-  set exposures-to-come []
-  set case-lifetime 30
 
   set control-levels initialise-control-levels
   set flow-levels read-from-string alert-levels-flow
@@ -155,21 +112,19 @@ to setup
   ask (turtle-set locales levels) [ set size size * size-adjust ]
   ask connections [ set thickness thickness * size-adjust ]
 
-  ;; initialisation of cases
-  set list-of-cases []
+  ;; initial exposures
   setup-cases
 
   update-statistics
 
   if not netlogo-web? and log-all-locales? [
-    initialise-logging
+;    initialise-logging
   ]
 
   set labels-on? true
   redraw
   paint-land green 4
 end
-
 
 ;; main initialisation of locales
 to setup-locales
@@ -198,114 +153,94 @@ to setup-cases
   ;; from NZ MoH data at DHB level
   ifelse member? "MoH data" setup-method [
     initialise-cases-from-string get-cases-data
-    ;; apologies for this hard coded hack! 728 recovered cases at the
-    ;; time of reporting, but publicly available data does not show which ones
-    ask n-of 728 clinical-cases [
-      set total-recovered total-recovered + 1
-      die
-    ]
-    ;; there will be some exposures to come after setup
-    ;; that have now recovered and need to removed from the list
-    set exposures-to-come filter [ t-x -> item 1 t-x != nobody ] exposures-to-come
-    ;; MoH data are by definition clinical, so now add subclinical accordingly
-    repeat count clinical-cases * (1 - p-clinical) / p-clinical [
-      ask one-of clinical-cases [
-        hatch 1 [
-          ;; by initialising with same t-0 as the
-          ;; clinical case, we are effectively 'resampling'
-          ;; the provided case data (about as well as we can do)
-          initialise-case t-0 0 true myself
-        ]
-      ]
-    ]
   ]
-  [
-    let save-initial-alert-level initial-alert-level
-    let save-alert-policy alert-policy
-    let save-new-exposures-arriving new-exposures-arriving
-    let save-pop-test-rate pop-test-rate
-    let save-time-to-detection time-to-detection
-    set-to-unprepared
-    repeat (initial-infected / 10) [
-      add-a-new-case
-    ]
-    while [count clinical-cases < initial-infected] [
-      run-one-day
-      tick
-    ]
-    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
-
-    ;    ;; otherwise random initialisation
-;    ;; this will be uniform by population
-;    repeat initial-infected [
-;      create-subclinical-cases 1 [
-;        ;; the negative time is an ugly hack
-;        let t (0 - random-exponential 7)
-;        initialise-case t p-clinical true nobody
-;      ]
-;    ]
+  [ ;; otherwise random initialisation
+    ;; this will be uniform by population
+    uniform-expose-by-population initial-infected
   ]
 end
 
 
-to set-to-unprepared
-  set-parameters 1 "static" 1 0 10
+
+to-report replace [s a b]
+  let i position a s
+  report replace-item i s b
 end
 
-to set-parameters [a-level policy arrivals test-r t-to-detection]
-  ask locales [
-    set alert-level a-level
-  ]
-  enact-new-levels
-  set alert-policy policy
-  set new-exposures-arriving arrivals
-  set pop-test-rate test-r
-  set time-to-detection t-to-detection
-end
+;; susceptible weighted infection so
+;; that higher population locales are more
+;; likely to receive exposures
+to uniform-expose-by-population [n]
+  repeat n [
+    ;; build cumulative total of susceptibles by locale
+    ;; ordered from highest to lowest
+    let susc reverse sort [susceptible] of locales
+    let cum-susc cumulative-sum susc
+    let total-susc last cum-susc
 
+    ;; order locales similarly
+    let ordered-locales reverse sort-on [susceptible] locales
 
-
-;; select a random locale with probability of selection
-;; weighted by susceptible population
-to-report random-locale-by-pop
-  ;; build cumulative total of susceptibles by locale
-  ;; ordered from highest to lowest
-  let susc reverse sort [susceptible] of locales
-  let cum-susc cumulative-sum susc
-  let total-susc last cum-susc
-
-  ;; order locales the same way
-  let ordered-locales reverse sort-on [susceptible] locales
-
-  ;; pick a random number and use it to pick the corresponding locale
-  let i random total-susc
-  let idx length filter [ x -> x < i ] cum-susc
-  report item idx ordered-locales
-end
-
-;; -----------------------------------------
-;; Maintain statistics
-;; -----------------------------------------
-
-;; reset locale counts
-to reset-locale-counts
-  ask locales [
-    set new-cases 0
-    set new-infected 0
-    set new-recovered 0
+    ;; pick a random number and use it to pick the corresponding locale
+    let i random total-susc
+    let idx length filter [ x -> x < i ] cum-susc
+    ask item idx ordered-locales [
+      initial-infect
+    ]
   ]
 end
 
-;; update overall statistics
+
+to initial-infect
+  set susceptible susceptible - 1
+
+  let choose one-of (list 1 2 3)
+  if choose = 1 [
+    set exposed exposed + 1
+    stop
+  ]
+  if choose = 2 [
+    set presymptomatic presymptomatic + 1
+    stop
+  ]
+  set infected infected + 1
+end
+
+to-report cumulative-sum [lst]
+  let starter sublist lst 0 1
+  report reduce [ [a b] -> lput (last a + b) a] (fput starter but-first lst)
+end
+
 to update-statistics
-  set total-cases count clinical-cases
-  set total-infected count all-cases
-  set total-recovered total-recovered + sum [new-recovered] of locales
+  set mean-R0 sum [my-control * R0 * susceptible] of locales / sum [susceptible] of locales
+  set mean-trans-coeff sum [my-trans-coeff * susceptible] of locales / sum [susceptible] of locales
 
+  set total-exposed sum [exposed] of locales
+  set total-presymptomatic sum [presymptomatic] of locales
+  set total-infected sum [infected] of locales
+  set total-recovered sum [recovered] of locales
+  set total-dead sum [dead] of locales
+
+  set total-new-exposed sum [new-exposed] of locales
+  set total-new-presymptomatic sum [new-presymptomatic] of locales
+  set total-new-infected sum [new-infected] of locales
+  set total-new-recovered sum [new-recovered] of locales
+  set total-new-dead sum [new-dead] of locales
+
+  set n-icu total-infected * p-icu
+  set cfr-tot cfr-0
+  if n-icu > icu-cap [
+    set cfr-tot (cfr-0 * icu-cap + (n-icu - icu-cap) * cfr-1) / n-icu
+  ]
   ask locales [
-    set cum-cases cum-cases + new-cases
-    set cum-infected cum-infected + new-infected
-    set cum-recovered cum-recovered + new-recovered
+    set recent-new-cases fput new-infected recent-new-cases
+
+    ;; testing is based on random draws from different pools of clinical, subclinical
+    ;; and general population
+    let new-tests new-infected + ;; new-cases we assume all got tested (which may be optimistic)
+        random-binomial new-presymptomatic test-rate-presymp + ;; new subclinical cases assume a lower rate
+        random-binomial susceptible test-rate-gen ;; and for general population a lower rate still
+    set recent-tests fput new-tests recent-tests
   ]
 end
 
@@ -315,25 +250,20 @@ end
 ;; -------------------------
 to go
   if (total-burden-remaining = 0 and ticks > 0) [
-    update-statistics
     update-plots
-    if not netlogo-web? and log-all-locales? [
-      output-cases
-    ]
+    tick
     stop
   ]
-
   reset-timer
   ;; run one day of the model
   run-one-day
-  if timer > 5 [
+  if timer > 2.5 [
     output-print "Epidemic appears out of control"
     output-print "or model has slowed for some other"
     output-print "reason, stopping execution"
     stop
   ]
 
-  ;; log outcomes to file
   if not netlogo-web? and log-all-locales? [
 ;    file-open full-file-name
 ;    ask locales [
@@ -341,126 +271,30 @@ to go
 ;    ]
 ;    file-close
   ]
+
   tick
 end
 
-;; the basic update cycle
+
 to run-one-day
-  ;; add some new cases if appropriate
-  repeat random-poisson new-exposures-arriving [
-    add-a-new-case
-  ]
-  reset-locale-counts
-  ;; spread infection by creating new cases
-  instantiate-exposures ticks
-  ;; progress all cases
-  progress-cases (ticks + 1)
-
-  update-statistics
-  update-testing
-
-  ;; change alert levels
-  if ticks >= start-lifting-quarantine and
-       ticks >= time-horizon and
-       (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+  if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
     change-alert-levels
   ]
-
+  ;; add some new cases if appropriate
+  uniform-expose-by-population random-poisson new-exposures-arriving
+  ask locales [
+    spread
+  ]
+  update-statistics
   redraw
 end
 
-to add-a-new-case
-  create-subclinical-cases 1 [
-    initialise-case (ticks - random-exponential 7) p-clinical false nobody
-  ]
+;; if this reporter falls to 0 then the model may as well stop
+;; and we've beaten this bastarding virus!
+to-report total-burden-remaining
+  report total-infected + total-presymptomatic + total-exposed
 end
 
-;; the core operation of the branching process
-to instantiate-exposures [t-now]
-  ;; split the exposures to come into those with timestamps between now and the next tick, and those later
-  let split-new-exposures split-cases-at-time exposures-to-come (t-now + 1)
-  ;; set exposures to come to those later that t-now + 1
-  set exposures-to-come last split-new-exposures
-  ;; get ready to add new exposures from those before t-now + 1
-  let new-exposures-today first split-new-exposures
-
-  while [length new-exposures-today > 0] [
-    foreach new-exposures-today [ t-x -> ;; the time-case pair
-      let case last t-x
-      let time first t-x
-      ask case [
-        if random-float 1 < current-control [
-          hatch 1 [
-            initialise-case time p-clinical false myself
-          ]
-          set infections-caused infections-caused + 1
-        ]
-      ]
-    ]
-    ;; it's possible some exposures of the cases just added snuck in before
-    ;; the end of the current tick, so update the new-exposures-today list
-    set split-new-exposures split-cases-at-time exposures-to-come (t-now + 1)
-    set exposures-to-come last split-new-exposures
-    set new-exposures-today first split-new-exposures
-  ]
-end
-
-;; exposures are added at full 'maximum R' but when called
-;; on may not occur due to current levels of control
-to-report current-control
-  ;; basic control is due to control level and susceptible
-  ;; population of the locale
-  let c [my-control * susceptible / pop-0] of my-locale
-  if breed = subclinical-cases [
-    report c
-  ]
-  ;; clinical cases may have been isolated
-  if breed = clinical-cases [
-    report c * ifelse-value is-isolated? [0.65] [1]
-  ]
-end
-
-
-;; ------------------------------------
-;; MAINTENANCE OF UPCOMING EXPOSURES
-;; ------------------------------------
-;; exposures to come is a list [ [time case] [time case] ... ]
-;; ordered by time
-
-;; make a list of times from each case into a list of time-case pairs
-to-report exposures-as-t-case-pairs
-  report map [ t -> (list t self) ] exposures
-end
-
-;; insert a case's list of exposure timestamps into
-;; the main global queue ordered by timestamp
-to insert-case-in-exposures-queue
-  let t-x-pairs exposures-as-t-case-pairs
-  ;; only need to do this if there are any!
-  if length t-x-pairs > 0 [
-    set exposures-to-come insert-txs-in-order exposures-to-come t-x-pairs
-  ]
-end
-
-;; basic insertion in queue of one time-case pair
-to-report insert-tx-in-order [L t-x-pair]
-  report (sentence filter [ t -> (first t) < (first t-x-pair) ] L    ;; exposures before this one
-                   (list t-x-pair) ;; note that even though it's already a list, we have to force
-                                   ;; it to be one, so sentence doesn't collapse nested lists flat
-                   filter [ t -> (first t) >= (first t-x-pair) ] L)  ;; exposures after
-end
-
-;; a reduce to insert multiple time-case pairs into a list of them
-;; I don't know if reduce is quicker than a foreach, but it's definitely cooler!
-to-report insert-txs-in-order [L t-x-pairs]
-  report reduce [ [a b] -> insert-tx-in-order a b] (fput L t-x-pairs)
-end
-
-;; first item in each member of the list is a timestamp
-to-report split-cases-at-time [L t] ;; assume list is ordered already
-  report (list filter [t-x -> first t-x < t] L
-               filter [t-x -> first t-x >= t] L)
-end
 
 
 ;; ------------------------------
@@ -493,6 +327,7 @@ to change-alert-levels
     enact-new-levels
     stop
   ]
+
 
   if alert-policy = "local" [
     ask locales [ ;; change alert levels locally based on local positive test results
@@ -556,52 +391,33 @@ to change-alert-levels
 end
 
 
-to update-testing
-  ask locales [
-    if debug? [
-      show (list ticks (length recent-tests) (length recent-positive-tests))
-    ]
-    let new-tests count (my-clinical-cases with [got-tested?]) +
-                  random-poisson (susceptible * pop-test-rate)
-    set recent-tests fput new-tests recent-tests
-
-    let positive-tests count (turtle-set my-clinical-cases my-subclinical-cases) with [tested-positive?]
-    set recent-positive-tests fput positive-tests recent-positive-tests
-  ]
-end
-
 to-report get-positive-test-rate
+  let current-new-cases recent-total recent-new-cases
   let current-tests recent-total recent-tests
-  let current-positive-tests recent-total recent-positive-tests
   ifelse current-tests > 0 [
-    report current-positive-tests / current-tests
+    report current-new-cases / current-tests
   ]
   [ ;; if there have been no tests, then caution dictates a high rate
     report 1
   ]
 end
 
-
-;; sum of most recent numbers based on time-horizon setting
 to-report recent-total [lst]
   report sum sublist lst 0 time-horizon
 end
 
-;; determine which alert level is indicated by positive test rate
 to-report get-new-alert-level [rate]
   report 1 + length filter [x -> rate > x] trigger-levels
 end
 
-;; clamp value to a desired range
-;; this is convenient for keeping alert level 1, 2, 3, or 4
 to-report clamp [x mn mx]
   report max (list mn min (list mx x))
 end
 
-;; change attributes of various breeds based on new alert level of locale
 to enact-new-levels
   ask locales [
     set my-control item (alert-level - 1) control-levels
+    set my-trans-coeff get-transmission-coeff (my-control * R0)
   ]
   ask levels [
     set alert-level [alert-level] of my-locale
@@ -613,84 +429,130 @@ to enact-new-levels
 end
 
 
+;to set-transmission-parameters [a]
+;  set alert-level a
+;  set my-R0 item alert-level R0-levels
+;  set my-trans-coeff get-transmission-coeff my-R0
+;end
 
-;; ----------------------------------------
-;; USEFUL model specific reporters
-;; ----------------------------------------
-;; is case in hospital?
-to-report in-hospital?
-  report breed = clinical-cases and hospitalised? and ticks >= t-enter-hospital and ticks < t-leave-hospital
+to-report get-transmission-coeff [R]
+  report R / (rel-inf-presymp / presymp-to-inf + 1 / inf-to-rec)
 end
 
-;; is case isolated?
-to-report is-isolated?
-  report breed = clinical-cases and ticks > t-isolation
+
+
+to spread
+  let immunity-correction susceptible / (pop-0 - dead)
+  set new-exposed random-binomial (get-effective-infected) (my-trans-coeff * immunity-correction) +
+                  random-binomial (get-effective-presymptomatic) (my-trans-coeff * rel-inf-presymp * immunity-correction)
+  set new-presymptomatic random-binomial exposed exp-to-presymp
+  set new-infected random-binomial presymptomatic presymp-to-inf
+
+  let no-longer-infected random-binomial infected inf-to-rec
+  set new-recovered random-binomial no-longer-infected (1 - cfr-tot)
+  set new-dead no-longer-infected - new-recovered
+
+;  show (list new-exposed new-presymptomatic new-infected no-longer-infected new-recovered new-dead)
+
+  ;; update all the stocks
+  expose new-exposed
+  presym new-presymptomatic
+  infect new-infected
+  recover new-recovered
+  kill new-dead
 end
 
-to-report got-tested?
-  report breed = clinical-cases and (floor t-isolation) = ticks
+to expose [n]
+  ;show word "expose " n
+  set susceptible susceptible - n
+  set exposed exposed + n
 end
 
-to-report tested-positive?
-  report got-tested? and random-float 1 < false-negative-rate
+to presym [n]
+  ;show word "presym " n
+  set exposed exposed - n
+  set presymptomatic presymptomatic + n
 end
 
-;; check for case recovery
-to progress-cases [time-now]
-  ask (turtle-set clinical-cases subclinical-cases) [
-    if time-now > t-recover [ ;; this is weirdly high 'for computational convenience' and makes no sense to me but is per TPM model
-      ask my-locale [
-        set new-recovered new-recovered + 1
-      ]
-      set list-of-cases lput output-case list-of-cases
-      die
+to infect [n]
+  ;show word "infect " n
+  set presymptomatic presymptomatic - n
+  set infected infected + n
+end
+
+to recover [n]
+  ;show word "recover " n
+  set infected infected - n
+  set recovered recovered + n
+end
+
+to kill [n]
+  ;show word "kill " n
+  set infected infected - n
+  set pop-0 pop-0 - n
+  set dead dead + n
+end
+
+to-report get-effective-infected
+  report infected + flow-rate * sum [my-flow-rate * w * [infected] of other-end] of my-in-connections
+end
+
+to-report get-effective-presymptomatic
+  report presymptomatic + flow-rate * sum [my-flow-rate * w * [presymptomatic] of other-end] of my-in-connections
+end
+
+;; --------------------------------------------------------------
+;; NOTE
+;; using random-poisson approximation for efficiency when n large
+;; --------------------------------------------------------------
+;;
+;to-report random-binomial [n p]
+;  if p = 0 [ report 0 ]
+;  if p = 1 [ report n ]
+;  if n * p >= 10 and p < 0.25 [
+;    report random-poisson (n * p)
+;  ]
+;  report length filter [x -> x < p] n-values n [random-float 1]
+;end
+
+
+;; Based on code from https://stackoverflow.com/questions/23561551/a-efficient-binomial-random-number-generator-code-in-java#23574723
+;; which implements one of Devroye's algorithms - and not the super complicated BTPE one of Kach... something
+to-report random-binomial [n p]
+; the Java code
+;public static int getBinomial(int n, double p) {
+;   double log_q = Math.log(1.0 - p);
+;   int x = 0;
+;   double sum = 0;
+;   for(;;) {
+;      sum += Math.log(Math.random()) / (n - x);
+;      if(sum < log_q) {
+;         return x;
+;      }
+;      x++;
+;   }
+  ; need to trap p = 0 and p = 1
+  if p = 1 [ report n ]
+  if p = 0 [ report 0 ]
+  let ln-q ln (1 - p)
+  let x 0
+  let s 0
+  ; also need to avoid x = n
+  while [x < n] [
+    set s s + ln (random-float 1) / (n - x)
+    if s < ln-q [
+      report x
     ]
+    set x x + 1
   ]
-  ;; remove any references to recovered cases that might be hanging around in the exposures to come list
-  set exposures-to-come filter [ t-x -> item 1 t-x != nobody ] exposures-to-come
+  report x
 end
-
-;; convenience reporter of all cases clinical and subclinical
-to-report all-cases
-  report (turtle-set clinical-cases subclinical-cases)
-end
-
-;; get a list of turtle-sets of all the cases associated with index cases
-to-report get-clusters
-  let index-cases all-cases with [not any? my-in-transmissions]
-  report map [ v -> [my-cluster] of v ] index-cases
-end
-
-;; build the cluster of secondary infections from a given case
-;; the cluster does not include the index-case itself (arbitrary decision)
-to-report my-cluster
-  let cluster turtle-set nobody
-  let secondary-infections (turtle-set [out-transmission-neighbors] of self)
-  while [any? secondary-infections] [
-    set cluster (turtle-set cluster secondary-infections)
-    set secondary-infections (turtle-set [out-transmission-neighbors] of secondary-infections)
-  ]
-  report cluster
-end
-
-;; a case with no recorded inward transmission is considered an index case
-to-report index-case?
-  report not any? my-in-transmissions
-end
-
-;; if this reporter falls to 0 then the model may as well stop
-;; and we've beaten this bastarding virus!
-to-report total-burden-remaining
-  report count all-cases + length exposures-to-come
-end
-
 
 
 ;; --------------------------------
 ;; initialisation stuff
 ;; --------------------------------
 ;; locales
-;; this is a random initialisation using something like a near neighbour graph
 to setup-locales-parametrically
   let pop-mean population / num-locales
   let pop-var pop-sd-multiplier * pop-sd-multiplier * pop-mean * pop-mean
@@ -712,36 +574,41 @@ to setup-locales-parametrically
   initialise-locales
 end
 
-;; get a random location with a guard zone from the world edge
 to-report random-xy-with-buffer [buffer]
   report (list rescale random-xcor (min-pxcor - 0.5) (max-pxcor + 0.5) buffer true
                rescale random-ycor (min-pycor - 0.5) (max-pycor + 0.5) buffer false)
 end
 
-;; standard initialisation of locale
+
 to initialise-locales
   let mean-pop-0 mean [pop-0] of locales
   ask locales [
-    set color [255 255 255 160]
-    ;; scaling by cube root of population seems to work OK
-    ;; for the very skew NZ population numbers
     set size (pop-0 / mean-pop-0) ^ (1 / 3)
-
     set susceptible pop-0
-    set new-cases 0
-    set new-recovered 0
-    set cum-cases 0
-    set cum-recovered 0
+    set exposed 0
+    set presymptomatic 0
+    set infected 0
+    set recovered 0
+    set dead 0
 
-    set recent-positive-tests []
+;    set tests 0
+;    set tests-positive 0
+
+    set new-exposed 0
+    set new-presymptomatic 0
+    set new-infected 0
+    set new-recovered 0
+    set new-dead 0
+
+    set recent-new-cases []
     set recent-tests []
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
-    set my-clinical-cases turtle-set nobody
-    set my-subclinical-cases turtle-set nobody
+    set my-trans-coeff get-transmission-coeff (my-control * R0)
   ]
 end
+
 
 ;; reads from a multiline string where each line is "id name x y pop\n"
 ;; lines are assumed to be sorted from id 0 by
@@ -818,8 +685,8 @@ end
 
 
 
-;; setup the level monitor turtles
-;; they inherit alert-level from the 'parent' locale
+
+
 to setup-levels
   ask locales [
     let x nobody
@@ -834,138 +701,16 @@ to setup-levels
   ]
 end
 
-
 ;; initialise from a multiline string "timestamp DHB\n"
 to initialise-cases-from-string [s]
   let cases-data but-first split-string s "\n"
 
   foreach cases-data [ c ->
     let parameters split-string c " "
-    let timestamp read-from-string item 0 parameters
     let dhb-name item 1 parameters
     ask one-of locales with [name = dhb-name] [
-      hatch 1 [
-        set breed subclinical-cases
-        set my-locale myself
-        initialise-case timestamp 1 true nobody
-      ]
+      initial-infect
     ]
-  ]
-end
-
-;; initialise a case INCLUDING its destiny
-;; i.e. all exposures it will cause to potentially occur
-;; time to onset, time to isolation, hospitalisation, recovery
-;; t is its t-0
-;; p-clin allows calling code to force clinical or subclinical
-;; old-cases? is boolean flag for a case that we are initialising
-;; retrospectively (mostly at model initialisation)
-;; cause is the infecting other case, or nobody if this is not known,
-;; or a newly arriving case
-to initialise-case [t p-clin old-case? cause]
-  set breed subclinical-cases
-
-  ;; common stuff
-  set t-0 t
-  set t-recover t-0 + case-lifetime ;; 'for computational convenience' (TPM model) will experiment with varying this later
-  set infections-caused 0
-
-  ;; set an initial locale
-  if my-locale = 0 or my-locale = nobody [
-    set my-locale random-locale-by-pop
-  ]
-  if cause != nobody and [breed] of cause != locales [
-    create-transmission-from cause [
-      set color grey - 1
-    ]
-    if ([breed] of cause) = subclinical-cases or not is-isolated? [ ;;then inter-locale movement is possible
-      let the-locale my-locale
-      ask my-locale [
-        if random-float 1 < (item (alert-level - 1) flow-levels) [
-          set the-locale choose-neighbour-by-weight gravity-weight?
-        ]
-      ]
-      set my-locale the-locale
-    ]
-  ]
-  ;; clinical or subclinical
-  ifelse random-float 1 < p-clin [
-    initialise-clinical-case
-    ask my-locale [
-      set my-clinical-cases (turtle-set my-clinical-cases myself)
-    ]
-  ]
-  [
-    initialise-subclinical-case
-    ask my-locale [
-      set my-subclinical-cases (turtle-set my-subclinical-cases myself)
-    ]
-  ]
-  ;; update the locale's stats
-  ask my-locale [
-    set new-infected new-infected + 1
-    set susceptible susceptible - 1
-  ]
-  ;; visual stuff - primarily moving the cases around in their locale
-  move-to my-locale
-  set size 0.1
-  set label "" ;; so it doesn't inherit from the locale
-  set heading random-float 360
-  jump random-float [size / 2] of my-locale
-  set map-x xcor
-  set map-y ycor
-
-  ifelse old-case? [
-    add-exposures-to-old-case
-  ]
-  [
-    initialise-exposures
-  ]
-  insert-case-in-exposures-queue
-end
-
-
-;; quite a lot of stuff to set up for clinical-cases
-to initialise-clinical-case
-  set breed clinical-cases
-  set base-R random-normal R-clin R-sd
-  set color red
-
-
-  set t-onset-1 random-gamma 5.5 0.95                ;; this is the time to symptomaticity
-  ;; TPM paper uses two settings for this - 2.18 (fast) or 6 (slow)
-  set t-onset-2 random-exponential time-to-detection ;; this is time to detection/isolation
-
-  set t-isolation t-0 + t-onset-1 + t-onset-2 ;; get isolated after being contact traced
-  set hospitalised? random-float 1 < 0.078    ;; probability of hospitalisation from TPM model
-  set t-leave-hospital t-enter-hospital + random-exponential 10
-  set t-enter-hospital t-0 + t-onset-1        ;; hospitalisation after onset (again TPM)
-
-  ;; only clinical cases increment this count
-  ask my-locale [
-    set new-cases new-cases + 1
-  ]
-end
-
-;; this is much easier
-to initialise-subclinical-case
-  set base-R 0.5 * random-normal R-clin R-sd
-  set color blue
-end
-
-
-to initialise-exposures
-  set exposures n-values random-poisson base-R [t -> t-0 + random-weibull 2.83 5.67 0 case-lifetime]
-end
-
-;; for initial cases -- only exposures after t=0 are required
-to add-exposures-to-old-case
-  ifelse (0 - t-0) > case-lifetime [
-    set exposures []
-  ]
-  [
-    let n random-poisson (base-R * (1 - cumulative-weibull 2.83 5.67 (0 - t-0)))
-    set exposures sort n-values n [t -> t-0 + random-weibull 2.83 5.67 (0 - t-0) case-lifetime]
   ]
 end
 
@@ -987,6 +732,7 @@ end
 to-report nearest-non-neighbour
   report first sort-on [distance myself] (other locales with [not connection-neighbor? myself])
 end
+
 
 
 to setup-connections-from-string [s]
@@ -1046,22 +792,6 @@ to reweight-connections
   ]
 end
 
-to-report choose-neighbour-by-weight [gravity?]
-  let neighbours link-set nobody
-  let cumulative-weights []
-  ifelse gravity? [
-    set neighbours reverse sort-on [gw] my-out-connections
-    set cumulative-weights cumulative-sum map [x -> [gw] of x] neighbours
-  ]
-  [
-    set neighbours reverse sort-on [w] my-out-connections
-    set cumulative-weights cumulative-sum map [x -> [w] of x] neighbours
-  ]
-  let picker random-float last cumulative-weights
-  let idx length filter [x -> x <= picker] cumulative-weights
-  report [other-end] of item idx neighbours
-end
-
 
 ;; connection length
 to-report geo-distance
@@ -1070,6 +800,7 @@ to-report geo-distance
   let ys map [v -> [geo-y] of v] ends
   report sqrt ((item 0 xs - item 1 xs) ^ 2 + (item 0 ys - item 1 ys) ^ 2)
 end
+
 
 
 ;; ----------------------------
@@ -1081,15 +812,10 @@ to setup-visualization-defaults
 
   ;; shapes of the different turtle types
   set-default-shape locales "circle"
-  set-default-shape clinical-cases "circle"
-  set-default-shape subclinical-cases "circle"
   set-default-shape levels "square 3"
   set-default-shape connections "myshape"
-  set-default-shape transmissions "myshape2"
 end
 
-
-;; there's not much to this...
 to redraw
   ask locales [
     draw-locale
@@ -1099,20 +825,10 @@ to redraw
   ]
 end
 
-;; at the moment this does nothing
 to draw-locale
-  ;; set color scale-color red (count cases with [my-locale = myself] / pop-0) pop-0 0
+  set color scale-color red recovered pop-0 0
 end
 
-;; these change a bit more often
-to draw-level
-  set alert-level [alert-level] of my-locale
-  ;; note that alert-level is 1, 2, 3, 4
-  ;; so we have a dummy color at index 0 to match background
-  set color item alert-level (list pcolor (lime + 1) yellow (orange + 1) red)
-end
-
-;;
 to toggle-labels
   set labels-on? not labels-on?
   ask locales [
@@ -1122,86 +838,29 @@ to toggle-labels
   ]
 end
 
-
-;; -------------------------------------------------
-;; CLUSTERS based visualization
-;; -------------------------------------------------
-to show-clusters
-  ifelse colour-by-cluster? [
-    ask locales [
-      set color one-of base-colors + 1
-      set label ""
-    ]
-    ask all-cases [
-      set color [color] of my-locale
-    ]
-  ]
-  [
-    ask locales [
-      set hidden? true
-      set label ""
-    ]
-  ]
-  ask levels [
-    set hidden? true
-  ]
-  ask connections [set hidden? true]
-
-  let index-cases all-cases with [index-case?]
-  let n count index-cases
-
-  ;; work out where to put them...
-  let grid-height 0
-  let grid-width 0
-  let patches-per-cluster count patches / n
-  let cluster-d sqrt patches-per-cluster
-  while [(grid-height * grid-width) < n] [
-    set grid-width ceiling floor (world-width / cluster-d)
-    set grid-height ceiling floor (world-height / cluster-d)
-    set cluster-d cluster-d * 0.95
-  ]
-  let i 0
-  ask index-cases [
-    let cluster my-cluster
-    layout-radial cluster transmissions self
-    ask my-cluster [
-      setxy xcor / world-width * cluster-d  ycor / world-width * cluster-d
-    ]
-  ]
-  ask index-cases [
-    set label-color black
-    let diff-x min-pxcor + (i mod grid-width + .5) * cluster-d
-    let diff-y min-pycor + (floor (i / grid-width) + .5) * cluster-d
-    setxy xcor + diff-x ycor + diff-y
-    ask my-cluster [
-      setxy xcor + diff-x ycor + diff-y
-    ]
-    set i i + 1
-  ]
+to draw-level
+  set alert-level [alert-level] of my-locale
+  set color item alert-level (list pcolor lime yellow orange red)
 end
 
-
-to revert-to-geographic-layout
-  ask locales [
-    set hidden? false
-    set label name
-    set color [255 255 255 160]
-  ]
-  ask levels [
-    set hidden? false
-  ]
-  ask connections [
-    set hidden? false
-  ]
-  ask transmissions [
-    untie
-  ]
-  ask all-cases [
-    set label ""
-    setxy map-x map-y
-    set color ifelse-value breed = clinical-cases [red] [blue]
-  ]
+to-report string-as-list [str]
+  report n-values length str [i -> item i str]
 end
+
+to-report split-string [str sep]
+  let words []
+  let this-word ""
+  foreach (string-as-list str) [ c ->
+    ifelse c = sep
+    [ set words sentence words this-word
+      set this-word "" ]
+    [ set this-word word this-word c ]
+  ]
+  ifelse this-word = ""
+  [ report words ]
+  [ report sentence words this-word ]
+end
+
 
 
 ;; --------------------------------------------------
@@ -1260,125 +919,10 @@ to-report length-link
 end
 
 
-;; -----------------------------------
-;; HANDY DISTRIBUTIONS!
-;; -----------------------------------
-;;
-;; --------------------------------------------------------------
-;; NOTE
-;; using random-poisson approximation for efficiency when n large
-;; --------------------------------------------------------------
-;;
-;to-report random-binomial [n p]
-;  if p = 0 [ report 0 ]
-;  if p = 1 [ report n ]
-;  if n * p >= 10 and p < 0.25 [
-;    report random-poisson (n * p)
-;  ]
-;  report length filter [x -> x < p] n-values n [random-float 1]
-;end
-
-
-;; Based on code from https://stackoverflow.com/questions/23561551/a-efficient-binomial-random-number-generator-code-in-java#23574723
-;; which implements one of Devroye's algorithms - and not the super complicated BTPE one of Kach... something
-to-report random-binomial [n p]
-; the Java code
-;public static int getBinomial(int n, double p) {
-;   double log_q = Math.log(1.0 - p);
-;   int x = 0;
-;   double sum = 0;
-;   for(;;) {
-;      sum += Math.log(Math.random()) / (n - x);
-;      if(sum < log_q) {
-;         return x;
-;      }
-;      x++;
-;   }
-  ; need to trap p = 0 and p = 1
-  if p = 1 [ report n ]
-  if p = 0 [ report 0 ]
-  let ln-q ln (1 - p)
-  let x 0
-  let s 0
-  ; also need to avoid x = n
-  while [x < n] [
-    set s s + ln (random-float 1) / (n - x)
-    if s < ln-q [
-      report x
-    ]
-    set x x + 1
-  ]
-  report x
-end
-
-
-;; https://stackoverflow.com/questions/33611708/random-number-generator-with-generalized-pareto-distribution-and-weilbull-distri
-to-report random-weibull [shp scale lower-limit upper-limit]
-  let result upper-limit
-  while [result >= upper-limit or result < lower-limit] [
-    set result scale * (-1 * ln (random-float 1)) ^ (1 / shp)
-  ]
-  report result
-end
-
-to-report cumulative-weibull [shp scale x]
-  if x <= 0 [
-    report 0
-  ]
-  report 1 - 1 / exp ((x / scale) ^ shp)
-end
-
-to-report weibull-in-interval [shp scale x1 x2]
-  report cumulative-weibull shp scale x2 - cumulative-weibull shp scale x1
-end
-
-;; ---------------------------------------
-;; SOME STRING and LIST HANDLING STUFF
-;; ---------------------------------------
-to-report cumulative-sum [lst]
-  report but-first reduce [ [a b] -> lput (last a + b) a] (fput [0] lst)
-end
-
-to-report string-as-list [str]
-  report n-values length str [i -> item i str]
-end
-
-to-report split-string [str sep]
-  let words []
-  let this-word ""
-  foreach (string-as-list str) [ c ->
-    ifelse c = sep
-    [ set words sentence words this-word
-      set this-word "" ]
-    [ set this-word word this-word c ]
-  ]
-  ifelse this-word = ""
-  [ report words ]
-  [ report sentence words this-word ]
-end
-
-
-to-report insert-value-in-order [L x]
-  report (sentence filter [v -> v < x] L x filter [v -> v >= x] L)
-end
-
-to-report insert-values-in-order [L new]
-  report reduce [ [a b] -> insert-value-in-order a b] (fput L new)
-end
-
-to-report split-list-at-value [L x] ;; assume list is ordered
-  report (list filter [v -> v < x] L filter [v -> v >= x] L)
-end
-
-
-to-report replace [s a b]
-  let i position a s
-  report replace-item i s b
-end
-
 to-report join-list [lst sep]
   report reduce [ [a b] -> (word a sep b) ] lst
 end
+
 
 to-report initialise-control-levels
   let control-level-specs (split-string alert-levels-control "\n")
@@ -1387,11 +931,13 @@ to-report initialise-control-levels
   report read-from-string (join-list (but-first split-string item idx control-level-specs " ") " ")
 end
 
+
+
 ;; ----------------------------------------
 ;; LOGGING
 ;; ----------------------------------------
 to initialise-logging
-;  set model-name "branching-process-RC-logging"
+;  set model-name "distributed-seir-RC-logging"
 ;  set date-time replace date-and-time "." ":"
 ;  let base-file-name (word model-name "-" date-time)
 ;  set base-file-name join-list split-string base-file-name " " "-"
@@ -1408,54 +954,13 @@ to initialise-logging
 ;  ]
 end
 
-to output-cases
-;  if any? all-cases [
-;    ask all-cases [
-;      set list-of-cases lput output-case list-of-cases
-;    ]
-;  ]
-;  let base-file-name (word model-name "-" date-time)
-;  set base-file-name join-list split-string base-file-name " " "-"
-;  set log-file-name (word base-file-name ".csv")
-;  set full-file-name (word log-folder "/" log-file-name)
-;  let cases-file-name (word log-folder "/" base-file-name ".cases")
-;  file-open cases-file-name
-;  file-print output-case-header
-;  foreach list-of-cases [ c ->
-;    file-print c
-;  ]
-;  file-close
-end
-
-
 to-report output-locale
-  report join-list (list ticks who name pop-0 susceptible cum-cases cum-infected cum-recovered new-cases new-infected new-recovered (first recent-tests) alert-level) ","
+  report join-list (list ticks who name pop-0 susceptible exposed presymptomatic infected recovered dead new-exposed new-presymptomatic new-infected new-recovered new-dead (first recent-tests) alert-level) ","
 end
 
 to-report output-locale-header
-  report "ticks,who,name,pop.0,susceptible,cum.cases,cum.infected,cum.recovered,new.cases,new.infected,new.recovered,new.tests,alert.level"
+  report "ticks,who,name,pop.0,susceptible,exposed,presymptomatic,infected,recovered,dead,new.exposed,new.presymptomatic,new.infected,new.recovered,new.dead,new.tests,alert.level"
 end
-
-
-to-report output-case
-  let pre nobody
-  if any? in-transmission-neighbors [
-    set pre [who] of one-of in-transmission-neighbors
-  ]
-  let loc [who] of my-locale
-  ifelse breed = clinical-cases [
-    report join-list (list who breed loc infections-caused base-R t-0 t-recover pre t-onset-1 t-onset-2 t-isolation hospitalised? t-enter-hospital t-leave-hospital) ","
-  ]
-  [
-    let dummy "NA"
-    report join-list (list who breed loc infections-caused base-R t-0 t-recover pre dummy dummy dummy dummy dummy dummy) ","
-  ]
-end
-
-to-report output-case-header
-  report "who,type,locale,infections.caused,base.R,t.0,t.recover,predecessor,t.onset.1,t.onset.2,t.isolation,hospitalised,t.enter.hospital,t.leave.hospital"
-end
-
 
 to-report log-file-header
   let parameters (list "name,value")
@@ -1476,22 +981,27 @@ to-report log-file-header
   set parameters lput join-list (list "start.lifting.quarantine" start-lifting-quarantine) "," parameters
   set parameters lput join-list (list "time.horizon" time-horizon) "," parameters
 
+  set parameters lput join-list (list "alert.levels.control" alert-levels-control) "," parameters
   set parameters lput join-list (list "alert.levels.flow" alert-levels-flow) "," parameters
-  set parameters lput join-list (list "pop.test.rate" pop-test-rate) "," parameters
-  set parameters lput join-list (list "false.negative.rate" false-negative-rate) "," parameters
+
+  set parameters lput join-list (list "test.rate.symp" test-rate-symp) "," parameters
+  set parameters lput join-list (list "test.rate.presymp" test-rate-presymp) "," parameters
+  set parameters lput join-list (list "test.rate.gen" test-rate-gen) "," parameters
 
   set parameters lput join-list (list "population" population) "," parameters
   set parameters lput join-list (list "num.locales" num-locales) "," parameters
   set parameters lput join-list (list "pop.sd.multiplier" pop-sd-multiplier) "," parameters
+  set parameters lput join-list (list "flow.rate" flow-rate) "," parameters
 
-  set parameters lput join-list (list "trigger.levels" trigger-levels) "," parameters
-  set parameters lput join-list (list "flow.levels" flow-levels) "," parameters
-  set parameters lput join-list (list "control.levels" control-levels) "," parameters
-  set parameters lput join-list (list "control.scenario" control-scenario) "," parameters
-  set parameters lput join-list (list "time.to.detection" time-to-detection) "," parameters
-
-  set parameters lput join-list (list "R.clin" r-clin) "," parameters
-  set parameters lput join-list (list "p.clinical" p-clinical) "," parameters
+  set parameters lput join-list (list "exp.to.presymp" exp-to-presymp) "," parameters
+  set parameters lput join-list (list "presymp.to.inf" presymp-to-inf) "," parameters
+  set parameters lput join-list (list "rel.inf.presymp" rel-inf-presymp) "," parameters
+  set parameters lput join-list (list "inf.to.rec" inf-to-rec) "," parameters
+  set parameters lput join-list (list "p.hosp" p-hosp) "," parameters
+  set parameters lput join-list (list "p.icu" p-icu) "," parameters
+  set parameters lput join-list (list "icu.cap" icu-cap) "," parameters
+  set parameters lput join-list (list "cfr.0" cfr-0) "," parameters
+  set parameters lput join-list (list "cfr.1" cfr-1) "," parameters
 
   set parameters lput join-list (list "min.pxcor" min-pxcor) "," parameters
   set parameters lput join-list (list "max.pxcor" max-pxcor) "," parameters
@@ -1500,6 +1010,8 @@ to-report log-file-header
 
   report join-list parameters "\n"
 end
+
+
 
 
 to-report get-locales-data [dataset]
@@ -4169,9 +3681,9 @@ to-report get-cases-data
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-540
+533
 12
-1041
+1034
 746
 -1
 -1
@@ -4196,9 +3708,9 @@ days
 100.0
 
 BUTTON
-440
-69
-532
+426
+68
+517
 103
 NIL
 setup
@@ -4213,805 +3725,10 @@ NIL
 1
 
 BUTTON
-439
-146
-530
-182
-go-one-week
-repeat 7 [go]\n
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-BUTTON
-437
-258
-529
-294
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-SLIDER
-17
-150
-191
-183
-num-locales
-num-locales
-20
-200
-20.0
-10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-246
-78
-424
-111
-initial-infected
-initial-infected
-0
-1000
-200.0
-10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-279
-217
-420
-250
-seed
-seed
-0
-100
-40.0
-1
-1
-NIL
-HORIZONTAL
-
-SWITCH
-280
-180
-419
-213
-use-seed?
-use-seed?
-1
-1
--1000
-
-SLIDER
-17
-112
-190
-145
-population
-population
-100000
-10000000
-5000000.0
-100000
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-18
-79
-191
-108
-These only apply when not \ninitialising from data\n
-12
-0.0
-1
-
-TEXTBOX
-1049
-49
-1133
-67
-Pandemic
-12
-0.0
-1
-
-TEXTBOX
-15
-279
-99
-297
-Connectivity
-12
-0.0
-1
-
-TEXTBOX
-17
-444
-149
-463
-Control and testing
-12
-0.0
-1
-
-SLIDER
-17
-187
-189
-220
-pop-sd-multiplier
-pop-sd-multiplier
-0.01
-1.2
-0.75
-0.01
-1
-NIL
-HORIZONTAL
-
-MONITOR
-106
-228
-186
-273
-max-pop
-max [pop-0] of locales
-0
-1
-11
-
-MONITOR
-18
-228
-99
-273
-min-pop
-min [pop-0] of locales
-0
-1
-11
-
-SLIDER
-374
-366
-528
-399
-initial-alert-level
-initial-alert-level
-1
-4
-4.0
-1
-1
-NIL
-HORIZONTAL
-
-PLOT
-1053
-202
-1413
-485
-Cumulative totals
-Days
-Log (count + 1}
-0.0
-10.0
-0.0
-3.0
-true
-true
-"" ""
-PENS
-"cases" 1.0 0 -2674135 true "" "plot log (sum [cum-cases] of locales + 1) 10"
-"infected" 1.0 0 -13345367 true "" "plot log (sum [cum-infected] of locales + 1) 10"
-"recovered" 1.0 0 -13840069 true "" "plot log (sum [cum-recovered] of locales + 1) 10"
-"tests" 1.0 0 -955883 true "" "plot log (sum [sum recent-tests] of locales  + 1) 10"
-
-SLIDER
-10
-713
-170
-746
-pop-test-rate
-pop-test-rate
-0
-0.002
-0.001
-0.0001
-1
-NIL
-HORIZONTAL
-
-INPUTBOX
-17
-377
-236
-437
-alert-levels-flow
-[0.2 0.1 0.05 0.025]
-1
-0
-String
-
-CHOOSER
-375
-466
-528
-511
-alert-policy
-alert-policy
-"static" "local" "global-mean" "global-max" "local-random"
-0
-
-MONITOR
-1054
-147
-1128
-192
-infected
-count clinical-cases + count subclinical-cases
-0
-1
-11
-
-MONITOR
-1332
-149
-1406
-194
-recovered
-total-recovered
-0
-1
-11
-
-INPUTBOX
-309
-521
-527
-581
-alert-level-triggers
-[0.0001 0.00025 0.0005 1]
-1
-0
-String
-
-SLIDER
-325
-630
-529
-663
-time-horizon
-time-horizon
-1
-28
-7.0
-1
-1
-days
-HORIZONTAL
-
-SWITCH
-548
-760
-719
-793
-log-all-locales?
-log-all-locales?
-1
-1
--1000
-
-SLIDER
-325
-592
-527
-625
-start-lifting-quarantine
-start-lifting-quarantine
-0
-56
-14.0
-1
-1
-days
-HORIZONTAL
-
-TEXTBOX
-454
-348
-533
-366
-Alert levels
-12
-0.0
-1
-
-MONITOR
-280
-674
-339
-719
-pop-lev-1
-sum [pop-0] of locales with [alert-level = 1]
-0
-1
-11
-
-MONITOR
-341
-674
-399
-719
-pop-lev-2
-sum [pop-0] of locales with [alert-level = 2]
-0
-1
-11
-
-MONITOR
-405
-674
-464
-719
-pop-lev-3
-sum [pop-0] of locales with [alert-level = 3]
-0
-1
-11
-
-MONITOR
-470
-674
-529
-719
-pop-lev-4
-sum [pop-0] of locales with [alert-level = 4]
-0
-1
-11
-
-MONITOR
-280
-725
-338
-770
-n-lev-1
-count locales with [alert-level = 1]
-0
-1
-11
-
-MONITOR
-341
-725
-399
-770
-n-lev-2
-count locales with [alert-level = 2]
-0
-1
-11
-
-MONITOR
-405
-725
-464
-770
-n-lev-3
-count locales with [alert-level = 3]
-0
-1
-11
-
-MONITOR
-470
-725
-529
-770
-n-lev-4
-count locales with [alert-level = 4]
-0
-1
-11
-
-INPUTBOX
-538
-800
-723
-860
-log-folder
-foo
-1
-0
-String
-
-MONITOR
-410
-777
-504
-822
-alert-activity
-alert-level-changes / count locales
-4
-1
-11
-
-BUTTON
-729
-758
-885
-793
-toggle-connections
-ask connections [set hidden? not hidden?]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-890
-758
-1016
-792
-NIL
-toggle-labels
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-438
-220
-530
-254
-go-13-weeks
-; no-display\nrepeat 91 [go]\n; display
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-SLIDER
-1056
-69
-1229
-102
-R-clin
-R-clin
-0
-11
-3.0
-0.01
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1134
-147
-1236
-192
-clinical-cases
-count clinical-cases
-0
-1
-11
-
-MONITOR
-1244
-147
-1326
-192
-in-hospital
-count clinical-cases with [in-hospital?]
-0
-1
-11
-
-INPUTBOX
-14
-465
-288
-573
-alert-levels-control
-pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]
-1
-1
-String
-
-PLOT
-1054
-494
-1416
-788
-Daily counts
-Days
-Count
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"cases" 1.0 0 -2674135 true "" "plot sum [new-cases] of locales"
-"infected" 1.0 0 -13345367 true "" "plot sum [new-infected] of locales"
-"recovered" 1.0 0 -13840069 true "" "plot sum [new-recovered] of locales"
-"pos-tests" 1.0 0 -955883 true "" "plot sum [first recent-positive-tests] of locales"
-
-BUTTON
-438
-184
-530
-218
-go-4-weeks
-; no-display\nrepeat 28 [go]\n; display
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-SLIDER
-1239
-69
-1403
-102
-p-clinical
-p-clinical
-0.1
-1
-0.667
-0.001
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1341
-19
-1405
-64
-R-mean
-mean [base-R] of all-cases
-3
-1
-11
-
-SLIDER
-241
-299
-413
-332
-new-exposures-arriving
-new-exposures-arriving
-0
-50
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
-CHOOSER
-14
-582
-157
-627
-control-scenario
-control-scenario
-"optimistic" "realistic" "pessimistic" "other"
-1
-
-MONITOR
-175
-703
-257
-748
-daily tests
-sum [item 0 recent-tests] of locales
-0
-1
-11
-
-SWITCH
-19
-339
-167
-372
-gravity-weight?
-gravity-weight?
-0
-1
--1000
-
-SLIDER
-18
-298
-230
-331
-max-connection-distance
-max-connection-distance
-150
-1200
-600.0
-25
-1
-km
-HORIZONTAL
-
-SWITCH
-1288
-809
-1413
-842
-debug?
-debug?
-1
-1
--1000
-
-TEXTBOX
-342
-778
-426
-823
-Alert level \nchanges \nper locale
-12
-0.0
-1
-
-TEXTBOX
-17
-667
-141
-697
-mean time to \nisolation 2.18 or 6
-12
-0.0
-1
-
-TEXTBOX
-324
-417
-533
-464
-NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
-12
-0.0
-1
-
-SLIDER
-1057
-106
-1230
-139
-R-sd
-R-sd
-0
-2
-0.0
-0.01
-1
-NIL
-HORIZONTAL
-
-MONITOR
-1146
-19
-1213
-64
-R-eff
-mean [infections-caused] of all-cases with [ticks - t-0 > 15]
-3
-1
-11
-
-BUTTON
-891
-800
-1044
-835
-show-current-clusters
-revert-to-geographic-layout\nshow-clusters
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-731
-801
-887
-835
-back-to-geography
-revert-to-geographic-layout
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SWITCH
-1054
-796
-1246
-829
-colour-by-cluster?
-colour-by-cluster?
-1
-1
--1000
-
-CHOOSER
-11
-13
-225
-58
-setup-method
-setup-method
-"NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Costa Rica" "Random landscape"
-1
-
-BUTTON
-439
-111
-530
-145
+425
+107
+518
+142
 go-one-day
 go
 NIL
@@ -5025,12 +3742,707 @@ NIL
 0
 
 BUTTON
-436
-298
-527
+422
+255
+518
+290
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+9
+149
+183
+182
+num-locales
+num-locales
+20
+200
+20.0
+10
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1409
+479
+1549
+512
+exp-to-presymp
+exp-to-presymp
+0
+1
+0.25
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1410
+519
+1548
+552
+presymp-to-inf
+presymp-to-inf
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1409
+559
+1547
+592
+inf-to-rec
+inf-to-rec
+0
+1
+0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1407
+599
+1545
+632
+rel-inf-presymp
+rel-inf-presymp
+0
+1
+0.15
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1425
+404
+1532
+449
+mean-trans-coeff
+mean-trans-coeff
+5
+1
+11
+
+SLIDER
+5
+678
+165
+711
+test-rate-symp
+test-rate-symp
+0
+1
+0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1405
+740
+1545
+773
+cfr-0
+cfr-0
+0
+0.1
+0.01
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1405
+779
+1547
+812
+cfr-1
+cfr-1
+0
+0.2
+0.02
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1406
+660
+1544
+693
+p-hosp
+p-hosp
+0
+0.5
+0.05
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1406
+700
+1545
+733
+p-icu
+p-icu
+0
+p-hosp
+0.0125
+0.0001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1404
+819
+1547
+852
+icu-cap
+icu-cap
+100
+600
+500.0
+10
+1
+beds
+HORIZONTAL
+
+SLIDER
+262
+69
+406
+102
+initial-infected
+initial-infected
+0
+10000
+10.0
+10
+1
+NIL
+HORIZONTAL
+
+PLOT
+1049
+12
+1394
+394
+Cumulative totals
+days
+log (people + 1)
+0.0
+6.0
+0.0
+3.0
+true
+true
+"" ""
+PENS
+"exposed" 1.0 0 -8431303 true "" "plot log (total-exposed + 1) 10"
+"presymp" 1.0 0 -955883 true "" "plot log (total-presymptomatic + 1) 10"
+"infected" 1.0 0 -2674135 true "" "plot log (total-infected + 1) 10"
+"recovered" 1.0 0 -13840069 true "" "plot log (total-recovered + 1) 10"
+"dead" 1.0 0 -16777216 true "" "plot log (total-dead + 1) 10"
+
+SLIDER
+262
+249
+404
+282
+seed
+seed
+0
+100
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+7
+420
+180
+453
+flow-rate
+flow-rate
+0
+1
+1.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+264
+211
+403
+244
+use-seed?
+use-seed?
+1
+1
+-1000
+
+SLIDER
+9
+112
+182
+145
+population
+population
+100000
+10000000
+5000000.0
+100000
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+12
+63
+209
+107
+Population\nOnly applicable when not initialising from data
+12
+0.0
+1
+
+TEXTBOX
+1406
+644
+1490
+662
+Mortality
+12
+0.0
+1
+
+TEXTBOX
+8
+292
+92
+310
+Connectivity
+12
+0.0
+1
+
+TEXTBOX
+9
+474
+141
+493
+Control and testing
+12
+0.0
+1
+
+SLIDER
+9
+186
+181
+219
+pop-sd-multiplier
+pop-sd-multiplier
+0.01
+1.2
+0.75
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+98
+230
+178
+275
+max-pop
+max [pop-0] of locales
+0
+1
+11
+
+MONITOR
+12
+232
+93
+277
+min-pop
+min [pop-0] of locales
+0
+1
+11
+
+INPUTBOX
+5
+492
+291
+602
+alert-levels-control
+pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]
+1
+1
+String
+
+MONITOR
+1424
+353
+1531
+398
+eff-mean-R0
+mean-R0
+3
+1
+11
+
+SLIDER
+345
+389
+518
+422
+initial-alert-level
+initial-alert-level
+1
+4
+4.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1398
+109
+1471
+154
+dead
+total-dead
+0
+1
+11
+
+PLOT
+1048
+402
+1393
+787
+Daily counts
+days
+number of people
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"exposed" 1.0 0 -6459832 true "" "plot total-new-exposed"
+"presymp" 1.0 0 -955883 true "" "plot total-new-presymptomatic"
+"infected" 1.0 0 -2674135 true "" "plot total-new-infected"
+"recovered" 1.0 0 -13840069 true "" "plot total-new-recovered"
+"dead" 1.0 0 -16777216 true "" "plot total-new-dead"
+
+SLIDER
+5
+718
+165
+751
+test-rate-presymp
+test-rate-presymp
+0
+0.1
+0.02
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+4
+758
+164
+791
+test-rate-gen
+test-rate-gen
+0
+0.002
+5.0E-4
+0.0001
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+7
+352
+163
+412
+alert-levels-flow
+[0.2 0.1 0.05 0.025]
+1
+0
+String
+
+CHOOSER
+364
+484
+517
+529
+alert-policy
+alert-policy
+"static" "local" "global-mean" "global-max" "local-random"
+0
+
+MONITOR
+1398
+12
+1473
+57
+all-infected
+total-infected + total-presymptomatic + total-exposed
+0
+1
+11
+
+MONITOR
+1398
+60
+1471
+105
+recovered
+total-recovered
+0
+1
+11
+
+INPUTBOX
+314
+534
+521
+594
+alert-level-triggers
+[0.0001 0.00025 0.0005 1]
+1
+0
+String
+
+SLIDER
+318
+637
+520
+670
+time-horizon
+time-horizon
+1
+28
+7.0
+1
+1
+days
+HORIZONTAL
+
+SWITCH
+530
+760
+701
+793
+log-all-locales?
+log-all-locales?
+1
+1
+-1000
+
+SLIDER
+320
+598
+522
+631
+start-lifting-quarantine
+start-lifting-quarantine
+0
+56
+7.0
+7
+1
+days
+HORIZONTAL
+
+TEXTBOX
+347
+371
+426
+389
+Alert levels
+12
+0.0
+1
+
+MONITOR
+269
+680
+327
+725
+pop-lev-1
+sum [pop-0] of locales with [alert-level = 1]
+0
+1
+11
+
+MONITOR
 332
-reset
-clear-all\n
+680
+390
+725
+pop-lev-2
+sum [pop-0] of locales with [alert-level = 2]
+0
+1
+11
+
+MONITOR
+395
+680
+454
+725
+pop-lev-3
+sum [pop-0] of locales with [alert-level = 3]
+0
+1
+11
+
+MONITOR
+459
+679
+518
+724
+pop-lev-4
+sum [pop-0] of locales with [alert-level = 4]
+0
+1
+11
+
+MONITOR
+269
+731
+327
+776
+n-lev-1
+count locales with [alert-level = 1]
+0
+1
+11
+
+MONITOR
+332
+731
+390
+776
+n-lev-2
+count locales with [alert-level = 2]
+0
+1
+11
+
+MONITOR
+395
+731
+454
+776
+n-lev-3
+count locales with [alert-level = 3]
+0
+1
+11
+
+MONITOR
+459
+730
+518
+775
+n-lev-4
+count locales with [alert-level = 4]
+0
+1
+11
+
+INPUTBOX
+529
+796
+714
+856
+log-folder
+foo
+1
+0
+String
+
+MONITOR
+415
+790
+509
+835
+alert-activity
+alert-level-changes / count locales
+4
+1
+11
+
+BUTTON
+744
+755
+900
+790
+toggle-connections
+ask connections [set hidden? not hidden?]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+906
+755
+1032
+789
+NIL
+toggle-labels
 NIL
 1
 T
@@ -5042,139 +4454,283 @@ NIL
 1
 
 TEXTBOX
+1415
 294
-146
+1515
+312
+Pandemic
+12
+0.0
+1
+
+TEXTBOX
+11
+842
+481
+885
+Model parameters not tuned to any specific location.\nExercise caution in using model to inform decision making.
+16
+15.0
+1
+
+CHOOSER
+9
+10
+197
+55
+setup-method
+setup-method
+"NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Costa Rica" "Random landscape"
+1
+
+SLIDER
+6
+312
+189
+345
+max-connection-distance
+max-connection-distance
+150
+1200
+600.0
+25
+1
+km
+HORIZONTAL
+
+BUTTON
 424
+144
+518
+178
+go-one-week
+repeat 7 [go]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+423
+181
+518
+215
+go-4-weeks
+repeat 28 [go]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+424
+217
+519
+251
+go-13-weeks
+repeat 91 [go]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+422
+294
+518
+328
+reset
+clear-all
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+220
+311
+404
+344
+new-exposures-arriving
+new-exposures-arriving
+0
+50
+0.0
+0.1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+277
 179
+406
+209
 Use seed value to repeat a run exactly
 12
 0.0
 1
 
 TEXTBOX
-241
-281
-403
-299
+222
+295
+387
+314
 Border control not total
 12
 0.0
 1
 
+CHOOSER
+6
+609
+149
+654
+control-scenario
+control-scenario
+"pessimistic" "realistic" "optimistic" "other"
+1
+
 TEXTBOX
-234
-116
-442
-134
-If not initialising from case data
+335
+792
+408
+837
+Alert level changes per locale
 12
 0.0
 1
 
 TEXTBOX
-14
-829
-527
-868
-Model parameters not tuned to any specific location.\nExercise caution in using model to inform decision making.
-16
-15.0
+305
+435
+524
+487
+NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
+12
+0.0
+1
+
+SLIDER
+1412
+312
+1537
+345
+R0
+R0
+1
+10
+2.5
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+1410
+457
+1547
+476
+Disease progression
+12
+0.0
 1
 
 OUTPUT
-236
-13
-532
-64
+206
+7
+528
+57
 12
 
-SLIDER
-10
-755
-171
-788
-false-negative-rate
-false-negative-rate
-0.8
+TEXTBOX
+206
+109
+408
+128
+If not initialising from case data
+12
+0.0
 1
-0.95
-0.01
-1
-NIL
-HORIZONTAL
 
-SLIDER
-15
-632
-171
-665
-time-to-detection
-time-to-detection
+MONITOR
+172
+680
+254
+725
+daily-tests
+sum [item 0 recent-tests] of locales
 0
-10
-2.18
-0.01
 1
-NIL
-HORIZONTAL
+11
+
+SWITCH
+179
+370
+327
+403
+gravity-weight?
+gravity-weight?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
-A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in
 
-Plank et al. 2020. [Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand]( https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/) (last accessed 15 April 2020).
-
-Locales are the white circles distributed across the model world, scaled according to their population. Connectivity between locales is shown by blue arrows. Within each locale cases of COVID19 are shown as either clinical (red dots) or subclinical (blue dots). Transmission events between cases are shown as grey arrows.
+(a general understanding of what the model is trying to show or explain)
 
 ## HOW IT WORKS
-The stochastic branching process is implemented as a list of `exposures-to-come` list which contains (timestamp, case) pairs and is maintained ordered by exposure timestamp.
 
-Each model time step the most imminent exposures, i.e. those with a timestamp between the current time and the next (i.e. between `ticks` and `ticks + 1`) cause a new `case` to arise, most often in the same `locale` as the case responsible for the exposure, but also with some probability in a different connected locale based on the connectivity between locales. When a new case arises it generates its own new exposures to come and these are added to the global list.
-
-After all imminent exposures have been flushed out across all cases, the model does general upkeep (updating statistics, etc,) and moves on to the next `tick`.
-
-The model keeps track of transmission events between cases (although the initial set of cases in the model are not connected in this way). This means that after a burn in period of about 4 weeks, you can inspect 'clusters' of cases by clicking the **show-clusters** button. (This is experimental at the moment, but shows the potential of a model that represents individual cases in this way). Revert back to the geographical view with the **back-to-geography** button.
+(what rules the agents use to create the overall behavior of the model)
 
 ## HOW TO USE IT
-The primary focus of the model is on different **alert-policy** settings and their effectiveness in maintaining control over the progress of the epidemic.
 
-To get a feel for things proceed as follows:
+(how to use the model, including a description of each of the items in the Interface tab)
 
-+ Determine preferred settings for **initial-infections**, the model spatial structure (using options in the **setup-method** drop-down), **gravity-weight?**, and **max-connection-distance**), epidemic settings (**R-clin** and **p-clinical**), and  control settings (**control-scenario** and **fast-isolation?**). Leave these unchanged through the sequence described below. You may also find it helpful to set **random-seed** on and choose a **seed** value that reliably produces some interesting behaviour, that you can focus on.
+## THINGS TO NOTICE
 
-Now, work through the following experiments:
+(suggested things for the user to notice while running the model)
 
-+ With **alert-policy** set to 'static' try each of the four **initial-alert-level** settings to get a feel for how quickly the epidemic takes hold in each of these levels, with no active management of levels. Keep in mind that alert levels below 4 the pandemic takes hold quickly and the model slows dramatically. So at lower alert levels, run only one week or even one day at a time!
-* In 'static' mode, try interactively switching the alert level (using the **initial-alert-level** control. This will give you a feel for how difficult it is to get control of a runaway epidemic in a managed way (i.e. without just going straight to level 4.
-+ Next try the 'global-mean', 'global-max' and 'local' **alert-policy** settings.
+## THINGS TO TRY
 
-These each work as follows:
+(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
 
-+ 'global-mean' uses the overall rate of positive tests summed across the system as a whole in conjunction with the **alert-trigger-levels** to switch all locales between levels.
-+ 'global-max' uses the maximum rate of positive tests in any one locale in conjunction with the **alert-trigger-levels** to switch all locales between levels.
-+ 'local' uses the locally calculate rate of positive tests to determine new alert levels applied only to the locale for which that rate has been calculated.
+## EXTENDING THE MODEL
 
-In all cases, moving down levels is 'sticky', i.e., levels will only move down one level at a time. Moving up will jump straight to the level consistent with the trigger-levels. **start-lifting-quarantine** and *time-horizon** affect when the model will first assess changing alert levels and the time period over which positive test results are calculated and the frequency with which alert level changes are considered.
+(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
 
-Experimenting with these settings you should see variation in the time to control over the epidemic, the amount of time different areas spend at different alert levels, the amount of alert activity (i.e. how often alert levels change), as well as in the degree of control of the epidemic and likelihood of new outbreaks.
+## NETLOGO FEATURES
 
-Our observations tend to suggest that the 'local' alert policy provides the best combination of control while reducing time spent by large areas at the most restrictive lockdown levels. Understanding the most appropriate scale for such local level control is a major challenge, as it requires good data on actual and likely rates of movement within and between locales in different lockdown levels. Smaller locales *appear* to be better, but this effect may be an artefact of them effectively under-representing likely rates of movement between locales since the model as currently implemented does not attempt to make movement comparable across different granularities. The best we can say is that this is a question well worth exploring.
+(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
 
-## NOTE
-The core branching process model is based on this one
+## RELATED MODELS
 
-+ Plank et al. 2020. [Modelling COVID-19’s spread and the effect of alert level 4 in New Zealand]( https://www.tepunahamatatini.ac.nz/2020/04/09/a-stochastic-model-for-covid-19-spread-and-the-effects-of-alert-level-4-in-aotearoa-new-zealand/) (last accessed 15 April 2020).
-
-However, it is important to note a difference between this version (>=beta-0-9) and previous versions in relation to that source model. Currently, all exposures that a case will give rise to over its 'lifetime' are initialised when the case is instantiated. The number of exposures is based on the maximum unconstrained R-0 of the epidemic. Reductions in R-0 due to quarantines, reductions in the suceptible population of a locale, and isolation due to contact tracing only affect the probability that an exposure will become a case _at the time when that exposure is pulled from the queue. This is almost certainly the same as the complicated definite integral procedure described in the above model description, _in effect_ but may offend purists.
-
-It has the significant benefit of avoiding complicated situations where new cases occur retropspectively well before the time when an exposure is drawn from the queue. It also makes it easier to consider individual level variation in R values (as now implemented), and also to build infection networks showing linkages between cases, if that is desired (and as has been sketchily implemented). It also substantially reduced the complexity of the code, making it easier to maintain, and also to translate to a different platform if required.
-
-A further advantage is that this makes model initialisation from the case data publicly provided by NZ's Ministry of Health more straightforward. While not perfect, this initialisation option can provide a reasonable approximation to the publicly reported DHB level data from 15 April 2020.
-
-It is also _possible_ that this is how the model is implemented in the above cited paper anyway, but the code for that model is (at time of writing) unavailable.
+(models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## CREDITS AND REFERENCES
-Model code written by [David O'Sullivan](mailto:david.osullivan@vuw.ac.nz), with input, suggestions, and encouragement from Ben Adams, Mark Gahegan and Dan Exeter. A web version of the model is available [here](http://southosullivan.com/misc/). and you will find earlier versions at my [github site](http://github.com/DOSull/spatial-epi).
+
+(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
 @#$#@#$#@
 default
 true
@@ -5493,186 +5049,356 @@ NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="alert-policies-nz-dhbs" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="compare-locale-sizes-static" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
     <go>go</go>
-    <final>output-cases</final>
-    <timeLimit steps="300"/>
-    <metric>count turtles</metric>
-    <enumeratedValueSet variable="test-rate-presymp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="new-exposures-arriving">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="R-sd">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-clinical">
-      <value value="0.667"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
-    <enumeratedValueSet variable="population">
-      <value value="5000000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-control">
-      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="R-clin">
-      <value value="3"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="fast-isolation?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="time-horizon">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[0.2 0.1 0.05 0.025]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="setup-method">
-      <value value="&quot;NZ DHBs from Apr 15 MoH data&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="680"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="control-scenario">
-      <value value="&quot;realistic&quot;"/>
-    </enumeratedValueSet>
+    <timeLimit steps="730"/>
+    <metric>total-infected</metric>
+    <metric>total-recovered</metric>
+    <metric>total-dead</metric>
     <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-      <value value="&quot;global-mean&quot;"/>
-      <value value="&quot;global-max&quot;"/>
       <value value="&quot;static&quot;"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="gravity-weight?">
-      <value value="true"/>
+    <enumeratedValueSet variable="testing-rate-presymptomatic">
+      <value value="0.025"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="test-rate-gen">
-      <value value="0.001"/>
+    <enumeratedValueSet variable="testing-rate-general">
+      <value value="5.0E-4"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.75"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="max-connection-distance">
-      <value value="600"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-folder">
-      <value value="&quot;alert-policies-experiment&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-alert-level">
+    <enumeratedValueSet variable="init-alert-level">
       <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="colour-by-cluster?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="debug?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="num-locales">
-      <value value="20"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
-    </enumeratedValueSet>
-  </experiment>
-  <experiment name="random-landscape-num-locales" repetitions="1" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <final>output-cases</final>
-    <timeLimit steps="300"/>
-    <enumeratedValueSet variable="test-rate-presymp">
-      <value value="0.05"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="new-exposures-arriving">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="R-sd">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="p-clinical">
-      <value value="0.667"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="use-seed?">
       <value value="true"/>
     </enumeratedValueSet>
     <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="population">
       <value value="5000000"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-control">
-      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]&quot;"/>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="R-clin">
-      <value value="3"/>
+    <enumeratedValueSet variable="uniform-by-pop?">
+      <value value="true"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="fast-isolation?">
-      <value value="false"/>
+    <enumeratedValueSet variable="initial-exposed">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="infected-to-recovered">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="flow-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="time-horizon">
       <value value="7"/>
     </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-levels-flow">
-      <value value="&quot;[0.2 0.1 0.05 0.025]&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="setup-method">
-      <value value="&quot;Random landscape&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="7"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-all-locales?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-infected">
-      <value value="1000"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="control-scenario">
-      <value value="&quot;realistic&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;local&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="gravity-weight?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="test-rate-gen">
-      <value value="0.001"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="pop-sd-multiplier">
-      <value value="0.75"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="max-connection-distance">
-      <value value="600"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="log-folder">
-      <value value="&quot;random-locales-num-locales&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-alert-level">
-      <value value="4"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="colour-by-cluster?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="debug?">
-      <value value="false"/>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="num-locales">
       <value value="20"/>
       <value value="50"/>
       <value value="100"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymptomatic-to-infected">
+      <value value="1"/>
+    </enumeratedValueSet>
     <enumeratedValueSet variable="alert-level-triggers">
-      <value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
+      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-symptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="compare-locale-sizes-local" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="730"/>
+    <metric>total-infected</metric>
+    <metric>total-recovered</metric>
+    <metric>total-dead</metric>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;local&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-presymptomatic">
+      <value value="0.025"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-general">
+      <value value="5.0E-4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="init-alert-level">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-seed?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="population">
+      <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="uniform-by-pop?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-exposed">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="infected-to-recovered">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="flow-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="time-horizon">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="20"/>
+      <value value="50"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymptomatic-to-infected">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-level-triggers">
+      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-symptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="locale-sizes-vs-lockdown-counts" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="730"/>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="testing-rate-presymptomatic">
+      <value value="0.025"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-general">
+      <value value="5.0E-4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-seed?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="population">
+      <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="uniform-by-pop?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="infected-to-recovered">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="flow-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="time-horizon">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="start-lifting-quarantine">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-all-locales?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="2500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;local&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="init-alert-level">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="20"/>
+      <value value="50"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymptomatic-to-infected">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-symptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-level-triggers">
+      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-folder">
+      <value value="&quot;staging-area/retest-num-locales&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="locale-sizes-base-rates-under-static-lockdown-levels" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="730"/>
+    <enumeratedValueSet variable="testing-rate-presymptomatic">
+      <value value="0.025"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-general">
+      <value value="5.0E-4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-seed?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="population">
+      <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="uniform-by-pop?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="infected-to-recovered">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="flow-rate">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="time-horizon">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exposed-to-presymptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[1.0 0.5 0.25 0.1 0.05]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="start-lifting-quarantine">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-all-locales?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="2500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;static&quot;"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="init-alert-level" first="0" step="1" last="4"/>
+    <enumeratedValueSet variable="relative-infectiousness-presymptomatic">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.45"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-R0">
+      <value value="&quot;[2.5 2.1 1.6 1.1 0.6]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="20"/>
+      <value value="50"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymptomatic-to-infected">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="testing-rate-symptomatic">
+      <value value="0.25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-level-triggers">
+      <value value="&quot;[0.0005 0.001 0.0025 0.005 1]&quot;"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
@@ -5690,18 +5416,7 @@ Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 
 myshape
-0.75
--0.2 0 0.0 1.0
-0.0 1 1.0 0.0
-0.2 0 0.0 1.0
-link direction
-true
-0
-Line -7500403 true 135 165 150 150
-Line -7500403 true 165 165 150 150
-
-myshape2
-0.0
+0.6
 -0.2 0 0.0 1.0
 0.0 1 1.0 0.0
 0.2 0 0.0 1.0
