@@ -232,11 +232,16 @@ to burn-in-model
   let save-time-to-detection time-to-detection
   set-to-unprepared
 
-  while [count clinical-cases < initial-infected] [
-    run-one-day true
-    tick
+  carefully [
+    while [count clinical-cases < initial-infected] [
+      run-one-day true
+      tick
+    ]
+    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
   ]
-  set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
+  [
+    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
+  ]
 end
 
 
