@@ -214,7 +214,7 @@ to setup-cases
           ;; by initialising with same t-0 as the
           ;; clinical case, we are effectively 'resampling'
           ;; the provided case data (about as well as we can do)
-          initialise-case t-0 0 true myself
+          initialise-case t-0 0 myself
         ]
       ]
     ]
@@ -231,44 +231,19 @@ to burn-in-model
   let save-pop-test-rate pop-test-rate
   let save-time-to-detection time-to-detection
   set-to-unprepared
-;  repeat (initial-infected / 10) [
-;    add-a-new-case
-;  ]
+
   while [count clinical-cases < initial-infected] [
     run-one-day true
     tick
   ]
   set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
-;  let survival-rate initial-infected / count clinical-cases
-;  ask all-cases [
-;    if random-float 1 > survival-rate [
-;      die
-;    ]
-;  ]
-;  clean-up-exposures-list
-;  backdate-cases ticks
-;  reset-ticks
-;  clear-all-plots
-;  update-plots
-end
-
-
-to backdate-cases [dt]
-  ask all-cases [
-    set t-0 t-0 - dt
-    set t-recover t-recover - dt
-  ]
-  ask clinical-cases [
-    set t-isolation t-isolation - dt
-    set t-enter-hospital t-enter-hospital - dt
-    set t-leave-hospital t-leave-hospital - dt
-  ]
 end
 
 
 to set-to-unprepared
   set-parameters 1 "static" 5 0 10
 end
+
 
 to set-parameters [a-level policy arrivals test-r t-to-detection]
   ask locales [
@@ -367,9 +342,8 @@ to run-one-day [burn-in?]
   reset-locale-counts
 
   ;; add some new cases if appropriate
-  repeat random-poisson new-exposures-arriving [
-    add-a-new-case
-  ]
+  add-arrivals random-poisson new-exposures-arriving
+
   ;; spread infection by creating new cases
   instantiate-exposures ticks
   ;; progress all cases
@@ -389,9 +363,9 @@ to run-one-day [burn-in?]
   redraw
 end
 
-to add-a-new-case
-  create-subclinical-cases 1 [
-    initialise-case (ticks - random-exponential 7) p-clinical false nobody
+to add-arrivals [n]
+  create-subclinical-cases n [
+    initialise-case (ticks - random-exponential 5) p-clinical nobody
   ]
 end
 
@@ -411,7 +385,7 @@ to instantiate-exposures [t-now]
       ask case [
         if random-float 1 < current-control [
           hatch 1 [
-            initialise-case time p-clinical false myself
+            initialise-case time p-clinical myself
           ]
           set infections-caused infections-caused + 1
         ]
@@ -871,7 +845,7 @@ to initialise-cases-from-string [s]
       hatch 1 [
         set breed subclinical-cases
         set my-locale myself
-        initialise-case timestamp 1 true nobody
+        initialise-case timestamp 1 nobody
       ]
     ]
   ]
@@ -886,7 +860,7 @@ end
 ;; retrospectively (mostly at model initialisation)
 ;; cause is the infecting other case, or nobody if this is not known,
 ;; or a newly arriving case
-to initialise-case [t p-clin old-case? cause]
+to initialise-case [t p-clin cause]
   set breed subclinical-cases
 
   ;; common stuff
@@ -939,12 +913,7 @@ to initialise-case [t p-clin old-case? cause]
   set map-x xcor
   set map-y ycor
 
-  ifelse old-case? [
-    add-exposures-to-old-case
-  ]
-  [
-    initialise-exposures
-  ]
+  initialise-exposures
   insert-case-in-exposures-queue
 end
 
@@ -980,18 +949,19 @@ end
 
 to initialise-exposures
   set exposures n-values random-poisson base-R [t -> t-0 + random-weibull 2.83 5.67 0 case-lifetime]
+  set exposures filter [t -> t >= ticks] exposures
 end
 
-;; for initial cases -- only exposures after t=0 are required
-to add-exposures-to-old-case
-  ifelse (0 - t-0) > case-lifetime [
-    set exposures []
-  ]
-  [
-    let n random-poisson (base-R * (1 - cumulative-weibull 2.83 5.67 (0 - t-0)))
-    set exposures sort n-values n [t -> t-0 + random-weibull 2.83 5.67 (0 - t-0) case-lifetime]
-  ]
-end
+;;; for initial cases -- only exposures after t=0 are required
+;to add-exposures-to-old-case
+;  ifelse (0 - t-0) > case-lifetime [
+;    set exposures []
+;  ]
+;  [
+;    let n random-poisson (base-R * (1 - cumulative-weibull 2.83 5.67 (0 - t-0)))
+;    set exposures sort n-values n [t -> t-0 + random-weibull 2.83 5.67 (0 - t-0) case-lifetime]
+;  ]
+;end
 
 
 ;; their connections
@@ -4294,7 +4264,7 @@ initial-infected
 initial-infected
 0
 2000
-1000.0
+200.0
 10
 1
 NIL

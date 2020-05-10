@@ -214,43 +214,36 @@ to setup-cases
           ;; by initialising with same t-0 as the
           ;; clinical case, we are effectively 'resampling'
           ;; the provided case data (about as well as we can do)
-          initialise-case t-0 0 true myself
+          initialise-case t-0 0 myself
         ]
       ]
     ]
   ]
   [
-    let save-initial-alert-level initial-alert-level
-    let save-alert-policy alert-policy
-    let save-new-exposures-arriving new-exposures-arriving
-    let save-pop-test-rate pop-test-rate
-    let save-time-to-detection time-to-detection
-    set-to-unprepared
-    repeat (initial-infected / 10) [
-      add-a-new-case
-    ]
-    while [count clinical-cases < initial-infected] [
-      run-one-day
-      tick
-    ]
-    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
-
-    ;    ;; otherwise random initialisation
-;    ;; this will be uniform by population
-;    repeat initial-infected [
-;      create-subclinical-cases 1 [
-;        ;; the negative time is an ugly hack
-;        let t (0 - random-exponential 7)
-;        initialise-case t p-clinical true nobody
-;      ]
-;    ]
+    burn-in-model
   ]
+end
+
+to burn-in-model
+  let save-initial-alert-level initial-alert-level
+  let save-alert-policy alert-policy
+  let save-new-exposures-arriving new-exposures-arriving
+  let save-pop-test-rate pop-test-rate
+  let save-time-to-detection time-to-detection
+  set-to-unprepared
+
+  while [count clinical-cases < initial-infected] [
+    run-one-day true
+    tick
+  ]
+  set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
 end
 
 
 to set-to-unprepared
-  set-parameters 1 "static" 1 0 10
+  set-parameters 1 "static" 5 0 10
 end
+
 
 to set-parameters [a-level policy arrivals test-r t-to-detection]
   ask locales [
@@ -325,8 +318,8 @@ to go
 
   reset-timer
   ;; run one day of the model
-  run-one-day
-  if timer > 2.5 [
+  run-one-day false
+  if timer > 5 [
     output-print "Epidemic appears out of control"
     output-print "or model has slowed for some other"
     output-print "reason, stopping execution"
@@ -345,12 +338,12 @@ to go
 end
 
 ;; the basic update cycle
-to run-one-day
-  ;; add some new cases if appropriate
-  repeat random-poisson new-exposures-arriving [
-    add-a-new-case
-  ]
+to run-one-day [burn-in?]
   reset-locale-counts
+
+  ;; add some new cases if appropriate
+  add-arrivals random-poisson new-exposures-arriving
+
   ;; spread infection by creating new cases
   instantiate-exposures ticks
   ;; progress all cases
@@ -359,19 +352,20 @@ to run-one-day
   update-statistics
   update-testing
 
-  ;; change alert levels
-  if ticks >= start-lifting-quarantine and
-       ticks >= time-horizon and
-       (ticks - start-lifting-quarantine) mod time-horizon = 0 [
-    change-alert-levels
+  if not burn-in? [
+    ;; change alert levels
+    if ticks >= start-lifting-quarantine and
+    ticks >= time-horizon and
+    (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+      change-alert-levels
+    ]
   ]
-
   redraw
 end
 
-to add-a-new-case
-  create-subclinical-cases 1 [
-    initialise-case (ticks - random-exponential 7) p-clinical false nobody
+to add-arrivals [n]
+  create-subclinical-cases n [
+    initialise-case (ticks - random-exponential 5) p-clinical nobody
   ]
 end
 
@@ -391,7 +385,7 @@ to instantiate-exposures [t-now]
       ask case [
         if random-float 1 < current-control [
           hatch 1 [
-            initialise-case time p-clinical false myself
+            initialise-case time p-clinical myself
           ]
           set infections-caused infections-caused + 1
         ]
@@ -647,6 +641,10 @@ to progress-cases [time-now]
     ]
   ]
   ;; remove any references to recovered cases that might be hanging around in the exposures to come list
+  clean-up-exposures-list
+end
+
+to clean-up-exposures-list
   set exposures-to-come filter [ t-x -> item 1 t-x != nobody ] exposures-to-come
 end
 
@@ -847,7 +845,7 @@ to initialise-cases-from-string [s]
       hatch 1 [
         set breed subclinical-cases
         set my-locale myself
-        initialise-case timestamp 1 true nobody
+        initialise-case timestamp 1 nobody
       ]
     ]
   ]
@@ -862,7 +860,7 @@ end
 ;; retrospectively (mostly at model initialisation)
 ;; cause is the infecting other case, or nobody if this is not known,
 ;; or a newly arriving case
-to initialise-case [t p-clin old-case? cause]
+to initialise-case [t p-clin cause]
   set breed subclinical-cases
 
   ;; common stuff
@@ -915,12 +913,7 @@ to initialise-case [t p-clin old-case? cause]
   set map-x xcor
   set map-y ycor
 
-  ifelse old-case? [
-    add-exposures-to-old-case
-  ]
-  [
-    initialise-exposures
-  ]
+  initialise-exposures
   insert-case-in-exposures-queue
 end
 
@@ -956,18 +949,19 @@ end
 
 to initialise-exposures
   set exposures n-values random-poisson base-R [t -> t-0 + random-weibull 2.83 5.67 0 case-lifetime]
+  set exposures filter [t -> t >= ticks] exposures
 end
 
-;; for initial cases -- only exposures after t=0 are required
-to add-exposures-to-old-case
-  ifelse (0 - t-0) > case-lifetime [
-    set exposures []
-  ]
-  [
-    let n random-poisson (base-R * (1 - cumulative-weibull 2.83 5.67 (0 - t-0)))
-    set exposures sort n-values n [t -> t-0 + random-weibull 2.83 5.67 (0 - t-0) case-lifetime]
-  ]
-end
+;;; for initial cases -- only exposures after t=0 are required
+;to add-exposures-to-old-case
+;  ifelse (0 - t-0) > case-lifetime [
+;    set exposures []
+;  ]
+;  [
+;    let n random-poisson (base-R * (1 - cumulative-weibull 2.83 5.67 (0 - t-0)))
+;    set exposures sort n-values n [t -> t-0 + random-weibull 2.83 5.67 (0 - t-0) case-lifetime]
+;  ]
+;end
 
 
 ;; their connections
@@ -4269,7 +4263,7 @@ SLIDER
 initial-infected
 initial-infected
 0
-1000
+2000
 200.0
 10
 1
@@ -4428,7 +4422,6 @@ PENS
 "cases" 1.0 0 -2674135 true "" "plot log (sum [cum-cases] of locales + 1) 10"
 "infected" 1.0 0 -13345367 true "" "plot log (sum [cum-infected] of locales + 1) 10"
 "recovered" 1.0 0 -13840069 true "" "plot log (sum [cum-recovered] of locales + 1) 10"
-"tests" 1.0 0 -955883 true "" "plot log (sum [sum recent-tests] of locales  + 1) 10"
 
 SLIDER
 10
@@ -4464,7 +4457,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-0
+1
 
 MONITOR
 1054
@@ -4778,7 +4771,6 @@ PENS
 "cases" 1.0 0 -2674135 true "" "plot sum [new-cases] of locales"
 "infected" 1.0 0 -13345367 true "" "plot sum [new-infected] of locales"
 "recovered" 1.0 0 -13840069 true "" "plot sum [new-recovered] of locales"
-"pos-tests" 1.0 0 -955883 true "" "plot sum [first recent-positive-tests] of locales"
 
 BUTTON
 438
@@ -5004,8 +4996,8 @@ CHOOSER
 58
 setup-method
 setup-method
-"NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Costa Rica" "Random landscape"
-1
+"NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
+0
 
 BUTTON
 439
