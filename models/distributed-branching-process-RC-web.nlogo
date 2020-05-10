@@ -156,8 +156,8 @@ to setup
   ask connections [ set thickness thickness * size-adjust ]
 
   ;; initialisation of cases
-  setup-cases
   set list-of-cases []
+  setup-cases
 
   update-statistics
 
@@ -219,17 +219,50 @@ to setup-cases
       ]
     ]
   ]
-  [ ;; otherwise random initialisation
-    ;; this will be uniform by population
-    repeat initial-infected [
-      create-subclinical-cases 1 [
-        ;; the negative time is an ugly hack
-        let t (0 - random-exponential 7)
-        initialise-case t p-clinical true nobody
-      ]
+  [
+    let save-initial-alert-level initial-alert-level
+    let save-alert-policy alert-policy
+    let save-new-exposures-arriving new-exposures-arriving
+    let save-pop-test-rate pop-test-rate
+    let save-time-to-detection time-to-detection
+    set-to-unprepared
+    repeat (initial-infected / 10) [
+      add-a-new-case
     ]
+    while [count clinical-cases < initial-infected] [
+      run-one-day
+      tick
+    ]
+    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-time-to-detection
+
+    ;    ;; otherwise random initialisation
+;    ;; this will be uniform by population
+;    repeat initial-infected [
+;      create-subclinical-cases 1 [
+;        ;; the negative time is an ugly hack
+;        let t (0 - random-exponential 7)
+;        initialise-case t p-clinical true nobody
+;      ]
+;    ]
   ]
 end
+
+
+to set-to-unprepared
+  set-parameters 1 "static" 1 0 10
+end
+
+to set-parameters [a-level policy arrivals test-r t-to-detection]
+  ask locales [
+    set alert-level a-level
+  ]
+  enact-new-levels
+  set alert-policy policy
+  set new-exposures-arriving arrivals
+  set pop-test-rate test-r
+  set time-to-detection t-to-detection
+end
+
 
 
 ;; select a random locale with probability of selection
@@ -315,9 +348,7 @@ end
 to run-one-day
   ;; add some new cases if appropriate
   repeat random-poisson new-exposures-arriving [
-    create-subclinical-cases 1 [
-      initialise-case (ticks + random-float 1) p-clinical false nobody
-    ]
+    add-a-new-case
   ]
   reset-locale-counts
   ;; spread infection by creating new cases
@@ -336,6 +367,12 @@ to run-one-day
   ]
 
   redraw
+end
+
+to add-a-new-case
+  create-subclinical-cases 1 [
+    initialise-case (ticks - random-exponential 7) p-clinical false nobody
+  ]
 end
 
 ;; the core operation of the branching process
@@ -4233,7 +4270,7 @@ initial-infected
 initial-infected
 0
 1000
-210.0
+200.0
 10
 1
 NIL
@@ -5055,7 +5092,7 @@ SLIDER
 10
 755
 171
-789
+788
 false-negative-rate
 false-negative-rate
 0.8
@@ -5070,7 +5107,7 @@ SLIDER
 15
 632
 171
-666
+665
 time-to-detection
 time-to-detection
 0
