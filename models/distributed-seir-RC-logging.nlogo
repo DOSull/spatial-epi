@@ -32,7 +32,7 @@ locales-own [
 
   recent-positive-tests   ;; list of recent new positive tests
   recent-tests            ;; list of recent numbers of tests in this locale
-  recent-control
+  recent-control-levels
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
@@ -119,11 +119,12 @@ to setup
 
   ;; initial exposures
   setup-cases
+  enact-alert-levels
 
   update-statistics
 
   if not netlogo-web? and log-all-locales? [
-;    initialise-logging
+    initialise-logging
   ]
 
   set labels-on? true
@@ -201,7 +202,7 @@ to set-parameters [a-level policy arrivals pop-test-r inf-test-r]
   ask locales [
     set alert-level a-level
   ]
-  enact-new-levels
+  enact-alert-levels
   set alert-policy policy
   set new-exposures-arriving arrivals
   set pop-test-rate pop-test-r
@@ -299,6 +300,7 @@ to run-one-day [burn-in?]
   add-arrivals random-poisson new-exposures-arriving
 
   ask locales [
+    set-control-level
     calculate-flows
     spread
   ]
@@ -312,6 +314,17 @@ to run-one-day [burn-in?]
     ]
   ]
   redraw
+end
+
+to set-control-level
+  ifelse response-time > 0 [
+    set recent-control-levels fput (item (alert-level - 1) control-levels) recent-control-levels
+    set my-control mean sublist recent-control-levels 0 min (list response-time length recent-control-levels)
+  ]
+  [
+    set my-control item (alert-level - 1) control-levels
+  ]
+  set my-trans-coeff get-transmission-coeff (my-control * R0)
 end
 
 ;; susceptible weighted infection so
@@ -360,7 +373,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -373,7 +386,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -392,7 +405,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -413,7 +426,7 @@ to change-alert-levels
       ]
       set alert-level-changes alert-level-changes + count locales
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -434,7 +447,7 @@ to change-alert-levels
       ]
       set alert-level-changes alert-level-changes + count locales
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 end
@@ -477,16 +490,17 @@ to-report clamp [x mn mx]
   report max (list mn min (list mx x))
 end
 
-to enact-new-levels
+to enact-alert-levels
   ask locales [
-    set my-control item (alert-level - 1) control-levels
-    set recent-control fput my-control recent-control
-    ifelse response-time > 0 [
-      set my-trans-coeff get-transmission-coeff (mean sublist recent-control 0 min (list (response-time + 1) length recent-control) * R0)
-    ]
-    [
-      set my-trans-coeff get-transmission-coeff (my-control * R0)
-    ]
+;    set mandated-control item (alert-level - 1) control-levels
+;    ifelse response-time > 0 and length my-recent-control-levels > 0 [
+;      let available-data min (list (response-time + 1) length my-recent-control-levels)
+;      let recent-mean mean sublist my-recent-control-levels 0 available-data
+;      set my-trans-coeff get-transmission-coeff (recent-mean * R0)
+;    ]
+;    [
+;      set my-trans-coeff get-transmission-coeff (my-control * R0)
+;    ]
   ]
   ask levels [
     set alert-level [alert-level] of my-locale
@@ -674,9 +688,6 @@ to initialise-locales
     set recovered 0
     set dead 0
 
-;    set tests 0
-;    set tests-positive 0
-
     set new-exposed 0
     set new-presymptomatic 0
     set new-infected 0
@@ -685,7 +696,7 @@ to initialise-locales
 
     set recent-tests []
     set recent-positive-tests []
-    set recent-control []
+    set recent-control-levels n-values response-time [x -> 1]
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
@@ -4026,7 +4037,7 @@ initial-infected
 initial-infected
 0
 10000
-1000.0
+600.0
 10
 1
 NIL
@@ -4076,7 +4087,7 @@ SWITCH
 244
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
@@ -4178,7 +4189,7 @@ INPUTBOX
 291
 602
 alert-levels-control
-pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.12]
+pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]
 1
 1
 String
@@ -4195,15 +4206,15 @@ mean-R0
 11
 
 SLIDER
-345
+349
 389
-518
+522
 422
 initial-alert-level
 initial-alert-level
 1
 4
-4.0
+2.0
 1
 1
 NIL
@@ -4269,14 +4280,14 @@ alert-levels-flow
 String
 
 CHOOSER
-364
-484
-517
-529
+192
+376
+345
+421
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-1
+0
 
 MONITOR
 1398
@@ -4353,10 +4364,10 @@ days
 HORIZONTAL
 
 TEXTBOX
-347
-371
-426
-389
+351
+370
+430
+388
 Alert levels
 12
 0.0
@@ -4534,7 +4545,7 @@ CHOOSER
 setup-method
 setup-method
 "NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
-0
+1
 
 SLIDER
 6
@@ -4545,7 +4556,7 @@ max-connection-distance
 max-connection-distance
 150
 1200
-1200.0
+600.0
 25
 1
 km
@@ -4662,7 +4673,7 @@ CHOOSER
 control-scenario
 control-scenario
 "pessimistic" "realistic" "optimistic" "other"
-1
+3
 
 TEXTBOX
 335
@@ -4675,10 +4686,10 @@ Alert level changes per locale
 1
 
 TEXTBOX
-305
-435
-524
-487
+309
+434
+529
+480
 NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
 12
 0.0
@@ -4823,18 +4834,18 @@ total-exposed
 11
 
 SLIDER
-233
-390
-338
-424
+332
+489
+522
+522
 response-time
 response-time
 0
 28
-0.0
+7.0
 1
 1
-NIL
+days
 HORIZONTAL
 
 @#$#@#$#@
