@@ -10,6 +10,8 @@
 ;;
 
 
+breed [markers marker]
+
 ;; localities where control is administered
 breed [locales locale]
 locales-own [
@@ -28,8 +30,8 @@ locales-own [
   new-recovered
   new-dead
 
-  recent-new-cases
-  recent-tests
+  recent-positive-tests   ;; list of recent new positive tests
+  recent-tests            ;; list of recent numbers of tests in this locale
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
@@ -54,7 +56,9 @@ directed-link-breed [connections connection]
 connections-own [
   w                  ;; inverse distance weighted _outward_ from each
   gw                 ;; gravity weighted (pop1 x pop2 / dist^2)
-  my-flow-rate
+  flow-rate-w
+  flow-rate-gw
+  flow
 ]
 
 
@@ -118,7 +122,7 @@ to setup
   update-statistics
 
   if not netlogo-web? and log-all-locales? [
-    initialise-logging
+;    initialise-logging
   ]
 
   set labels-on? true
@@ -156,55 +160,78 @@ to setup-cases
   ]
   [ ;; otherwise random initialisation
     ;; this will be uniform by population
-    uniform-expose-by-population initial-infected
-  ]
-end
-
-
-
-to-report replace [s a b]
-  let i position a s
-  report replace-item i s b
-end
-
-;; susceptible weighted infection so
-;; that higher population locales are more
-;; likely to receive exposures
-to uniform-expose-by-population [n]
-  repeat n [
-    ;; build cumulative total of susceptibles by locale
-    ;; ordered from highest to lowest
-    let susc reverse sort [susceptible] of locales
-    let cum-susc cumulative-sum susc
-    let total-susc last cum-susc
-
-    ;; order locales similarly
-    let ordered-locales reverse sort-on [susceptible] locales
-
-    ;; pick a random number and use it to pick the corresponding locale
-    let i random total-susc
-    let idx length filter [ x -> x < i ] cum-susc
-    ask item idx ordered-locales [
-      initial-infect
+    ifelse initialise-by-burn-in? [
+      burn-in-model
+    ]
+    [
+      add-arrivals initial-infected
     ]
   ]
 end
 
 
-to initial-infect
-  set susceptible susceptible - 1
+to burn-in-model
+  let save-initial-alert-level initial-alert-level
+  let save-alert-policy alert-policy
+  let save-new-exposures-arriving new-exposures-arriving
+  let save-pop-test-rate pop-test-rate
+  let save-inf-test-rate inf-test-rate
+  set-to-unprepared
 
-  let choose one-of (list 1 2 3)
-  if choose = 1 [
+  carefully [
+    while [total-burden-remaining < initial-infected] [
+      run-one-day true
+      tick
+    ]
+    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-inf-test-rate
+  ]
+  [
+    set-parameters save-initial-alert-level save-alert-policy save-new-exposures-arriving save-pop-test-rate save-inf-test-rate
+  ]
+end
+
+
+to set-to-unprepared
+  set-parameters 1 "static" 5 0 0
+end
+
+
+to set-parameters [a-level policy arrivals pop-test-r inf-test-r]
+  ask locales [
+    set alert-level a-level
+  ]
+  enact-new-levels
+  set alert-policy policy
+  set new-exposures-arriving arrivals
+  set pop-test-rate pop-test-r
+  set inf-test-rate inf-test-r
+end
+
+
+
+
+;; add new infections in relative proportions
+;; dictated by the relative rate of movement between states
+to initial-infect
+  let rel-frequencies (list (1 / exp-to-presymp) (1 / presymp-to-inf) (1 / inf-to-rec))
+  let cum-rel-frequencies cumulative-sum rel-frequencies
+  let total-rel-frequencies last cum-rel-frequencies
+  let i random total-rel-frequencies
+  let choice length filter [x -> x < i] cum-rel-frequencies
+  set susceptible susceptible - 1
+  if choice = 0 [
     set exposed exposed + 1
     stop
   ]
-  if choose = 2 [
+  if choice = 1 [
     set presymptomatic presymptomatic + 1
     stop
   ]
   set infected infected + 1
 end
+
+
+
 
 to-report cumulative-sum [lst]
   let starter sublist lst 0 1
@@ -232,16 +259,6 @@ to update-statistics
   if n-icu > icu-cap [
     set cfr-tot (cfr-0 * icu-cap + (n-icu - icu-cap) * cfr-1) / n-icu
   ]
-  ask locales [
-    set recent-new-cases fput new-infected recent-new-cases
-
-    ;; testing is based on random draws from different pools of clinical, subclinical
-    ;; and general population
-    let new-tests new-infected + ;; new-cases we assume all got tested (which may be optimistic)
-        random-binomial new-presymptomatic test-rate-presymp + ;; new subclinical cases assume a lower rate
-        random-binomial susceptible test-rate-gen ;; and for general population a lower rate still
-    set recent-tests fput new-tests recent-tests
-  ]
 end
 
 
@@ -256,8 +273,8 @@ to go
   ]
   reset-timer
   ;; run one day of the model
-  run-one-day
-  if timer > 2.5 [
+  run-one-day false
+  if timer > 5 [
     output-print "Epidemic appears out of control"
     output-print "or model has slowed for some other"
     output-print "reason, stopping execution"
@@ -276,18 +293,49 @@ to go
 end
 
 
-to run-one-day
-  if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
-    change-alert-levels
-  ]
+to run-one-day [burn-in?]
   ;; add some new cases if appropriate
-  uniform-expose-by-population random-poisson new-exposures-arriving
+  add-arrivals random-poisson new-exposures-arriving
+
   ask locales [
+    calculate-flows
     spread
   ]
+
   update-statistics
+  update-testing
+
+  if not burn-in? [
+    if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+      change-alert-levels
+    ]
+  ]
   redraw
 end
+
+;; susceptible weighted infection so
+;; that higher population locales are more
+;; likely to receive exposures
+to add-arrivals [n]
+  repeat n [
+    ;; build cumulative total of susceptibles by locale
+    ;; ordered from highest to lowest
+    let susc reverse sort [susceptible] of locales
+    let cum-susc cumulative-sum susc
+    let total-susc last cum-susc
+
+    ;; order locales similarly
+    let ordered-locales reverse sort-on [susceptible] locales
+
+    ;; pick a random number and use it to pick the corresponding locale
+    let i random total-susc
+    let idx length filter [ x -> x < i ] cum-susc
+    ask item idx ordered-locales [
+      initial-infect
+    ]
+  ]
+end
+
 
 ;; if this reporter falls to 0 then the model may as well stop
 ;; and we've beaten this bastarding virus!
@@ -390,12 +438,26 @@ to change-alert-levels
   ]
 end
 
+to update-testing
+  ask locales [
+    if debug? [
+      show (list ticks (length recent-tests) (length recent-positive-tests))
+    ]
+    let new-infected-tests random-poisson (infected * inf-test-rate)
+    let new-tests new-infected-tests + random-poisson (susceptible * pop-test-rate)
+    set recent-tests fput new-tests recent-tests
+
+    let positive-tests random-binomial new-infected-tests (1 - false-negative-rate)
+    set recent-positive-tests fput positive-tests recent-positive-tests
+  ]
+end
+
 
 to-report get-positive-test-rate
-  let current-new-cases recent-total recent-new-cases
   let current-tests recent-total recent-tests
+  let current-positive-tests recent-total recent-positive-tests
   ifelse current-tests > 0 [
-    report current-new-cases / current-tests
+    report current-positive-tests / current-tests
   ]
   [ ;; if there have been no tests, then caution dictates a high rate
     report 1
@@ -424,7 +486,8 @@ to enact-new-levels
     draw-level
   ]
   ask connections [
-    set my-flow-rate min [item (alert-level - 1) flow-levels] of both-ends
+    set flow-rate-w w * min [item (alert-level - 1) flow-levels] of both-ends
+    set flow-rate-gw gw * min [item (alert-level - 1) flow-levels] of both-ends
   ]
 end
 
@@ -442,9 +505,9 @@ end
 
 
 to spread
-  let immunity-correction susceptible / (pop-0 - dead)
-  set new-exposed random-binomial (get-effective-infected) (my-trans-coeff * immunity-correction) +
-                  random-binomial (get-effective-presymptomatic) (my-trans-coeff * rel-inf-presymp * immunity-correction)
+  let immunity-correction 1 / (pop-0 - dead)
+  set new-exposed random-binomial (susceptible) (get-effective-infected * my-trans-coeff * immunity-correction) +
+                  random-binomial (susceptible) (get-effective-presymptomatic * my-trans-coeff * rel-inf-presymp * immunity-correction)
   set new-presymptomatic random-binomial exposed exp-to-presymp
   set new-infected random-binomial presymptomatic presymp-to-inf
 
@@ -493,12 +556,25 @@ to kill [n]
   set dead dead + n
 end
 
+to calculate-flows
+  ask my-out-connections [
+    ifelse gravity-weight? [
+      set flow random-poisson ([presymptomatic] of myself * flow-rate-gw)
+    ]
+    [
+      set flow random-poisson ([presymptomatic] of myself * flow-rate-w)
+    ]
+  ]
+end
+
 to-report get-effective-infected
-  report infected + flow-rate * sum [my-flow-rate * w * [infected] of other-end] of my-in-connections
+  report infected
+;  report infected + flow-rate * sum [my-flow-rate * w * [infected] of other-end] of my-in-connections
 end
 
 to-report get-effective-presymptomatic
-  report presymptomatic + flow-rate * sum [my-flow-rate * w * [presymptomatic] of other-end] of my-in-connections
+  report presymptomatic - sum [flow] of my-out-connections + sum [flow] of my-in-connections
+  ; report presymptomatic + flow-rate * sum [my-flow-rate * w * [presymptomatic] of other-end] of my-in-connections
 end
 
 ;; --------------------------------------------------------------
@@ -600,8 +676,8 @@ to initialise-locales
     set new-recovered 0
     set new-dead 0
 
-    set recent-new-cases []
     set recent-tests []
+    set recent-positive-tests []
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
@@ -814,9 +890,11 @@ to setup-visualization-defaults
   set-default-shape locales "circle"
   set-default-shape levels "square 3"
   set-default-shape connections "myshape"
+  set-default-shape markers "circle 3"
 end
 
 to redraw
+  clear-drawing
   ask locales [
     draw-locale
   ]
@@ -827,6 +905,15 @@ end
 
 to draw-locale
   set color scale-color red recovered pop-0 0
+  if (exposed + presymptomatic + infected) > 0 [
+    hatch 1 [
+      set breed markers
+      set size size * 1.1
+      set color black
+      stamp
+      die
+    ]
+  ]
 end
 
 to toggle-labels
@@ -918,6 +1005,10 @@ to-report length-link
   report d
 end
 
+to-report replace [s a b]
+  let i position a s
+  report replace-item i s b
+end
 
 to-report join-list [lst sep]
   report reduce [ [a b] -> (word a sep b) ] lst
@@ -984,14 +1075,13 @@ to-report log-file-header
   set parameters lput join-list (list "alert.levels.control" alert-levels-control) "," parameters
   set parameters lput join-list (list "alert.levels.flow" alert-levels-flow) "," parameters
 
-  set parameters lput join-list (list "test.rate.symp" test-rate-symp) "," parameters
-  set parameters lput join-list (list "test.rate.presymp" test-rate-presymp) "," parameters
-  set parameters lput join-list (list "test.rate.gen" test-rate-gen) "," parameters
+  set parameters lput join-list (list "pop.test.rate" pop-test-rate) "," parameters
+  set parameters lput join-list (list "inf.test.rate" inf-test-rate) "," parameters
+  set parameters lput join-list (list "false.negative.rate" false-negative-rate) "," parameters
 
   set parameters lput join-list (list "population" population) "," parameters
   set parameters lput join-list (list "num.locales" num-locales) "," parameters
   set parameters lput join-list (list "pop.sd.multiplier" pop-sd-multiplier) "," parameters
-  set parameters lput join-list (list "flow.rate" flow-rate) "," parameters
 
   set parameters lput join-list (list "exp.to.presymp" exp-to-presymp) "," parameters
   set parameters lput join-list (list "presymp.to.inf" presymp-to-inf) "," parameters
@@ -3782,7 +3872,7 @@ exp-to-presymp
 exp-to-presymp
 0
 1
-0.25
+0.2
 0.01
 1
 NIL
@@ -3797,7 +3887,7 @@ presymp-to-inf
 presymp-to-inf
 0
 1
-1.0
+0.2
 0.01
 1
 NIL
@@ -3843,21 +3933,6 @@ mean-trans-coeff
 5
 1
 11
-
-SLIDER
-5
-678
-165
-711
-test-rate-symp
-test-rate-symp
-0
-1
-0.1
-0.01
-1
-NIL
-HORIZONTAL
 
 SLIDER
 1405
@@ -3943,7 +4018,7 @@ initial-infected
 initial-infected
 0
 10000
-10.0
+1000.0
 10
 1
 NIL
@@ -3986,21 +4061,6 @@ seed
 NIL
 HORIZONTAL
 
-SLIDER
-7
-420
-180
-453
-flow-rate
-flow-rate
-0
-1
-1.0
-0.1
-1
-NIL
-HORIZONTAL
-
 SWITCH
 264
 211
@@ -4008,7 +4068,7 @@ SWITCH
 244
 use-seed?
 use-seed?
-1
+0
 1
 -1000
 
@@ -4110,7 +4170,7 @@ INPUTBOX
 291
 602
 alert-levels-control
-pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]
+pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.12]
 1
 1
 String
@@ -4142,10 +4202,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1398
-109
-1471
-154
+1400
+211
+1473
+256
 dead
 total-dead
 0
@@ -4175,30 +4235,15 @@ PENS
 "dead" 1.0 0 -16777216 true "" "plot total-new-dead"
 
 SLIDER
-5
-718
-165
-751
-test-rate-presymp
-test-rate-presymp
-0
-0.1
-0.02
-0.001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-4
-758
-164
-791
-test-rate-gen
-test-rate-gen
+6
+750
+166
+783
+pop-test-rate
+pop-test-rate
 0
 0.002
-5.0E-4
+0.001
 0.0001
 1
 NIL
@@ -4223,24 +4268,24 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-0
+1
 
 MONITOR
 1398
 12
-1473
-57
-all-infected
-total-infected + total-presymptomatic + total-exposed
+1524
+58
+total-infected
+total-infected
 0
 1
 11
 
 MONITOR
-1398
-60
-1471
-105
+1400
+162
+1473
+207
 recovered
 total-recovered
 0
@@ -4480,19 +4525,19 @@ CHOOSER
 55
 setup-method
 setup-method
-"NZ DHBs from Apr 15 MoH data" "NZ DHBs random cases" "NZ TAs random cases" "Costa Rica" "Random landscape"
-1
+"NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
+0
 
 SLIDER
 6
 312
-189
-345
+215
+346
 max-connection-distance
 max-connection-distance
 150
 1200
-600.0
+1200.0
 25
 1
 km
@@ -4567,10 +4612,10 @@ NIL
 1
 
 SLIDER
-220
-311
-404
-344
+222
+313
+406
+346
 new-exposures-arriving
 new-exposures-arriving
 0
@@ -4592,10 +4637,10 @@ Use seed value to repeat a run exactly
 1
 
 TEXTBOX
-222
-295
-387
-314
+223
+298
+388
+317
 Border control not total
 12
 0.0
@@ -4674,10 +4719,10 @@ If not initialising from case data
 1
 
 MONITOR
-172
-680
-254
-725
+171
+739
+253
+784
 daily-tests
 sum [item 0 recent-tests] of locales
 0
@@ -4685,15 +4730,89 @@ sum [item 0 recent-tests] of locales
 11
 
 SWITCH
-179
-370
-327
-403
+7
+417
+163
+451
 gravity-weight?
 gravity-weight?
 0
 1
 -1000
+
+SWITCH
+911
+802
+1033
+836
+debug?
+debug?
+1
+1
+-1000
+
+SLIDER
+8
+710
+167
+744
+inf-test-rate
+inf-test-rate
+0
+1
+0.9
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+6
+789
+200
+823
+false-negative-rate
+false-negative-rate
+0
+0.2
+0.05
+0.01
+1
+NIL
+HORIZONTAL
+
+SWITCH
+228
+131
+406
+165
+initialise-by-burn-in?
+initialise-by-burn-in?
+1
+1
+-1000
+
+MONITOR
+1399
+62
+1525
+108
+NIL
+total-presymptomatic
+0
+1
+11
+
+MONITOR
+1399
+112
+1524
+158
+NIL
+total-exposed
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -4793,11 +4912,12 @@ false
 0
 Circle -7500403 true true 0 0 300
 
-circle 2
+circle 3
 false
 0
-Circle -7500403 true true 0 0 300
-Circle -16777216 true false 30 30 240
+Circle -7500403 false true -1 -1 301
+Circle -7500403 false true 14 14 272
+Circle -7500403 false true 7 7 286
 
 cow
 false

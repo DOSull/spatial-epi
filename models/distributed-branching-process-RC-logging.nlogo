@@ -631,7 +631,7 @@ to-report got-tested?
 end
 
 to-report tested-positive?
-  report got-tested? and random-float 1 < false-negative-rate
+  report got-tested? and random-float 1 > false-negative-rate
 end
 
 ;; check for case recovery
@@ -4444,10 +4444,10 @@ NIL
 HORIZONTAL
 
 INPUTBOX
-17
-377
-236
-437
+18
+338
+177
+399
 alert-levels-flow
 [0.2 0.1 0.05 0.025]
 1
@@ -4857,10 +4857,10 @@ sum [item 0 recent-tests] of locales
 11
 
 SWITCH
-19
-339
-167
-372
+18
+403
+176
+437
 gravity-weight?
 gravity-weight?
 0
@@ -5092,9 +5092,9 @@ SLIDER
 788
 false-negative-rate
 false-negative-rate
-0.8
-1
-0.95
+0
+0.2
+0.05
 0.01
 1
 NIL
