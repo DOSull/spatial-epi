@@ -32,6 +32,7 @@ locales-own [
 
   recent-positive-tests   ;; list of recent new positive tests
   recent-tests            ;; list of recent numbers of tests in this locale
+  recent-control-levels
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
@@ -158,6 +159,7 @@ to setup
   ;; initialisation of cases
   set list-of-cases []
   setup-cases
+  enact-alert-levels
 
   update-statistics
 
@@ -254,7 +256,7 @@ to set-parameters [a-level policy arrivals test-r t-to-detection]
   ask locales [
     set alert-level a-level
   ]
-  enact-new-levels
+  enact-alert-levels
   set alert-policy policy
   set new-exposures-arriving arrivals
   set pop-test-rate test-r
@@ -349,6 +351,7 @@ to run-one-day [burn-in?]
   ;; add some new cases if appropriate
   add-arrivals random-poisson new-exposures-arriving
 
+  ask locales [ set-control-level ]
   ;; spread infection by creating new cases
   instantiate-exposures ticks
   ;; progress all cases
@@ -373,6 +376,17 @@ to add-arrivals [n]
     initialise-case (ticks - random-exponential 5) p-clinical nobody
   ]
 end
+
+to set-control-level
+  ifelse response-time > 0 [
+    set recent-control-levels fput (item (alert-level - 1) control-levels) recent-control-levels
+    set my-control mean sublist recent-control-levels 0 min (list response-time length recent-control-levels)
+  ]
+  [
+    set my-control item (alert-level - 1) control-levels
+  ]
+end
+
 
 ;; the core operation of the branching process
 to instantiate-exposures [t-now]
@@ -476,7 +490,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -489,7 +503,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -507,7 +521,7 @@ to change-alert-levels
         set alert-level-changes alert-level-changes + 1
       ]
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -528,7 +542,7 @@ to change-alert-levels
       ]
       set alert-level-changes alert-level-changes + count locales
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 
@@ -549,7 +563,7 @@ to change-alert-levels
       ]
       set alert-level-changes alert-level-changes + count locales
     ]
-    enact-new-levels
+    enact-alert-levels
     stop
   ]
 end
@@ -598,10 +612,10 @@ to-report clamp [x mn mx]
 end
 
 ;; change attributes of various breeds based on new alert level of locale
-to enact-new-levels
-  ask locales [
-    set my-control item (alert-level - 1) control-levels
-  ]
+to enact-alert-levels
+;  ask locales [
+;    set my-control item (alert-level - 1) control-levels
+;  ]
   ask levels [
     set alert-level [alert-level] of my-locale
     draw-level
@@ -738,6 +752,7 @@ to initialise-locales
 
     set recent-positive-tests []
     set recent-tests []
+    set recent-control-levels []
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
@@ -4269,7 +4284,7 @@ initial-infected
 initial-infected
 0
 2000
-200.0
+350.0
 10
 1
 NIL
@@ -4394,15 +4409,15 @@ min [pop-0] of locales
 11
 
 SLIDER
-374
-366
-528
-399
+375
+372
+529
+405
 initial-alert-level
 initial-alert-level
 1
 4
-4.0
+2.0
 1
 1
 NIL
@@ -4455,14 +4470,14 @@ alert-levels-flow
 String
 
 CHOOSER
-375
-466
-528
-511
+218
+362
+371
+407
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "local-random"
-1
+0
 
 MONITOR
 1054
@@ -4539,10 +4554,10 @@ days
 HORIZONTAL
 
 TEXTBOX
-454
-348
-533
-366
+455
+354
+534
+372
 Alert levels
 12
 0.0
@@ -4752,7 +4767,7 @@ INPUTBOX
 288
 573
 alert-levels-control
-pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]
+pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]
 1
 1
 String
@@ -4843,7 +4858,7 @@ CHOOSER
 control-scenario
 control-scenario
 "optimistic" "realistic" "pessimistic" "other"
-1
+3
 
 MONITOR
 175
@@ -4860,7 +4875,7 @@ SWITCH
 18
 403
 176
-437
+436
 gravity-weight?
 gravity-weight?
 0
@@ -4914,10 +4929,10 @@ mean time to \nisolation 2.18 or 6
 1
 
 TEXTBOX
-324
-417
-533
-464
+325
+424
+534
+471
 NOTE: with alert-policy 'static'\ninteractively change global level\nusing the initial-alert-level control
 12
 0.0
@@ -5113,6 +5128,21 @@ time-to-detection
 0.01
 1
 NIL
+HORIZONTAL
+
+SLIDER
+330
+472
+529
+506
+response-time
+response-time
+0
+28
+7.0
+1
+1
+days
 HORIZONTAL
 
 @#$#@#$#@
