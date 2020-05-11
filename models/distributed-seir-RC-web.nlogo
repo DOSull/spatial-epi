@@ -32,6 +32,7 @@ locales-own [
 
   recent-positive-tests   ;; list of recent new positive tests
   recent-tests            ;; list of recent numbers of tests in this locale
+  recent-control
 
   alert-level        ;; local alert level which controls...
   my-alert-indicator ;; local level turtle indicator
@@ -479,7 +480,13 @@ end
 to enact-new-levels
   ask locales [
     set my-control item (alert-level - 1) control-levels
-    set my-trans-coeff get-transmission-coeff (my-control * R0)
+    set recent-control fput my-control recent-control
+    ifelse response-time > 0 [
+      set my-trans-coeff get-transmission-coeff (mean sublist recent-control 0 min (list (response-time + 1) length recent-control) * R0)
+    ]
+    [
+      set my-trans-coeff get-transmission-coeff (my-control * R0)
+    ]
   ]
   ask levels [
     set alert-level [alert-level] of my-locale
@@ -678,6 +685,7 @@ to initialise-locales
 
     set recent-tests []
     set recent-positive-tests []
+    set recent-control []
 
     set alert-level initial-alert-level
     set my-control item (alert-level - 1) control-levels
@@ -4274,7 +4282,7 @@ MONITOR
 1398
 12
 1524
-58
+57
 total-infected
 total-infected
 0
@@ -4532,7 +4540,7 @@ SLIDER
 6
 312
 215
-346
+345
 max-connection-distance
 max-connection-distance
 150
@@ -4733,7 +4741,7 @@ SWITCH
 7
 417
 163
-451
+450
 gravity-weight?
 gravity-weight?
 0
@@ -4744,7 +4752,7 @@ SWITCH
 911
 802
 1033
-836
+835
 debug?
 debug?
 1
@@ -4755,7 +4763,7 @@ SLIDER
 8
 710
 167
-744
+743
 inf-test-rate
 inf-test-rate
 0
@@ -4770,7 +4778,7 @@ SLIDER
 6
 789
 200
-823
+822
 false-negative-rate
 false-negative-rate
 0
@@ -4785,10 +4793,10 @@ SWITCH
 228
 131
 406
-165
+164
 initialise-by-burn-in?
 initialise-by-burn-in?
-1
+0
 1
 -1000
 
@@ -4796,7 +4804,7 @@ MONITOR
 1399
 62
 1525
-108
+107
 NIL
 total-presymptomatic
 0
@@ -4807,12 +4815,27 @@ MONITOR
 1399
 112
 1524
-158
+157
 NIL
 total-exposed
 0
 1
 11
+
+SLIDER
+233
+390
+338
+424
+response-time
+response-time
+0
+28
+0.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
