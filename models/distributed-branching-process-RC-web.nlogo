@@ -129,6 +129,8 @@ globals [
   labels-on?        ;; show locale labels or not
 
   alert-level-changes  ;; count of the total number of alert-level changes per locale
+
+  start-time ;; ticks at which setup is complete
 ]
 
 ;; model initialisation
@@ -170,6 +172,7 @@ to setup
   set labels-on? true
   redraw
   paint-land green 4
+  set start-time ticks
 end
 
 
@@ -362,9 +365,9 @@ to run-one-day [burn-in?]
 
   if not burn-in? [
     ;; change alert levels
-    if ticks >= start-lifting-quarantine and
+    if ticks >= (start-lifting-quarantine + start-time) and
     ticks >= time-horizon and
-    (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+    (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
       change-alert-levels
     ]
   ]
@@ -4299,7 +4302,7 @@ seed
 seed
 0
 100
-40.0
+1.0
 1
 1
 NIL
@@ -4312,7 +4315,7 @@ SWITCH
 213
 use-seed?
 use-seed?
-1
+0
 1
 -1000
 
@@ -5017,7 +5020,7 @@ CHOOSER
 setup-method
 setup-method
 "NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
-0
+3
 
 BUTTON
 439
@@ -5124,7 +5127,7 @@ time-to-detection
 time-to-detection
 0
 10
-2.18
+6.0
 0.01
 1
 NIL
@@ -5134,7 +5137,7 @@ SLIDER
 330
 472
 529
-506
+505
 response-time
 response-time
 0

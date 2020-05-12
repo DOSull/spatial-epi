@@ -94,6 +94,8 @@ globals [
   labels-on?
 
   alert-level-changes
+
+  start-time ;; ticks at which setup is complete
 ]
 
 to setup
@@ -130,6 +132,8 @@ to setup
   set labels-on? true
   redraw
   paint-land green 4
+
+  set start-time ticks
 end
 
 ;; main initialisation of locales
@@ -309,7 +313,8 @@ to run-one-day [burn-in?]
   update-testing
 
   if not burn-in? [
-    if ticks >= start-lifting-quarantine and (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+    if ticks >= (start-lifting-quarantine + start-time)
+       and (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
       change-alert-levels
     ]
   ]
@@ -4214,7 +4219,7 @@ initial-alert-level
 initial-alert-level
 1
 4
-4.0
+2.0
 1
 1
 NIL
@@ -4545,7 +4550,7 @@ CHOOSER
 setup-method
 setup-method
 "NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
-0
+1
 
 SLIDER
 6
