@@ -5543,7 +5543,7 @@ NetLogo 6.1.0
       <value value="5000000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-control">
-      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.12]&quot;"/>
+      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R-clin">
       <value value="3"/>
@@ -5638,7 +5638,7 @@ NetLogo 6.1.0
       <value value="5000000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-control">
-      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.8 0.55 0.35]&quot;"/>
+      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R-clin">
       <value value="3"/>
@@ -5732,7 +5732,7 @@ NetLogo 6.1.0
       <value value="5000000"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-levels-control">
-      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.12]&quot;"/>
+      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R-clin">
       <value value="3"/>

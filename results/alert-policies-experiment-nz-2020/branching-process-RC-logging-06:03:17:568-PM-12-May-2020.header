@@ -1,0 +1,32 @@
+name,value
+model.name,branching-process-RC-logging
+log.file.name,branching-process-RC-logging-06:03:17:568-PM-12-May-2020.csv
+log.all.locales?,true
+log.folder,alert-policies-experiment-nz-2020
+use.seed?,true
+seed,13
+setup.method,NZ DHBs random cases
+gravity.weight?,true
+max-connection.distance,600
+initial.infected,350
+initial.alert.level,4
+alert.policy,local
+start.lifting.quarantine,7
+time.horizon,7
+alert.levels.flow,[0.2 0.1 0.05 0.025]
+pop.test.rate,0.001
+false.negative.rate,0.05
+population,5000000
+num.locales,20
+pop.sd.multiplier,0.75
+trigger.levels,[1.0E-4 2.5E-4 5.0E-4 1]
+flow.levels,[0.2 0.1 0.05 0.025]
+control.levels,[1 0.7 0.4 0.12]
+control.scenario,other
+time.to.detection,6
+R.clin,3
+p.clinical,0.667
+min.pxcor,-8
+max.pxcor,8
+min.pycor,-12
+max.pycor,12
