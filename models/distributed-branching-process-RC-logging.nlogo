@@ -129,6 +129,8 @@ globals [
   labels-on?        ;; show locale labels or not
 
   alert-level-changes  ;; count of the total number of alert-level changes per locale
+
+  start-time ;; ticks at which setup is complete
 ]
 
 ;; model initialisation
@@ -170,6 +172,7 @@ to setup
   set labels-on? true
   redraw
   paint-land green 4
+  set start-time ticks
 end
 
 
@@ -362,9 +365,9 @@ to run-one-day [burn-in?]
 
   if not burn-in? [
     ;; change alert levels
-    if ticks >= start-lifting-quarantine and
+    if ticks >= (start-lifting-quarantine + start-time) and
     ticks >= time-horizon and
-    (ticks - start-lifting-quarantine) mod time-horizon = 0 [
+    (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
       change-alert-levels
     ]
   ]
