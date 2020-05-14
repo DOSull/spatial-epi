@@ -70,6 +70,7 @@ globals [
   control-levels         ;; R0 multipliers associated with the alert levels
   flow-levels
   trigger-levels
+  scripted-events   ;; list of timestamp alert-level changes
 
   mean-R0           ;; pop weighted mean R0
   mean-trans-coeff  ;; pop weighted mean trans coeff
@@ -110,6 +111,7 @@ to setup
   set control-levels initialise-control-levels
   set flow-levels read-from-string alert-levels-flow
   set trigger-levels read-from-string alert-level-triggers
+  set scripted-events map [x -> map [y -> read-from-string y] split-string x " "] split-string script "\n"
 
   setup-locales
   setup-levels
@@ -313,9 +315,22 @@ to run-one-day [burn-in?]
   update-testing
 
   if not burn-in? [
-    if ticks >= (start-lifting-quarantine + start-time)
-       and (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
-      change-alert-levels
+    ifelse alert-policy = "scripted" [
+      let elapsed-time ticks - start-time
+      let events filter [x -> item 0 x = elapsed-time] scripted-events
+      if debug? [ show events ]
+      if length events > 0 [
+        set initial-alert-level last first events
+        change-alert-levels
+      ]
+    ]
+    [
+      ;; change alert levels
+      if ticks >= (start-lifting-quarantine + start-time) and
+      ticks >= time-horizon and
+      (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
+        change-alert-levels
+      ]
     ]
   ]
   redraw
@@ -4852,6 +4867,17 @@ response-time
 1
 days
 HORIZONTAL
+
+INPUTBOX
+215
+590
+320
+665
+script
+0 4\n35 3\n56 2
+1
+1
+String
 
 @#$#@#$#@
 ## WHAT IS IT?

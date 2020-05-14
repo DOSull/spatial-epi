@@ -5161,6 +5161,17 @@ response-time
 days
 HORIZONTAL
 
+INPUTBOX
+215
+590
+320
+665
+script
+0 4\n35 3\n56 2
+1
+1
+String
+
 @#$#@#$#@
 ## WHAT IS IT?
 A model of a [stochastic branching](https://en.wikipedia.org/wiki/Branching_process) epidemic running across a number of regions (referred to as **locales**). The model's purpose is to explore options for the most effective management of alert-levels (quarantines or 'lockdowns') as the system attempts to emerge from total level 4 lockdown, while contininuing to control the spread of the epidemic. The branching process model is based on the description in
