@@ -4394,10 +4394,10 @@ Alert levels
 1
 
 MONITOR
-269
-680
-327
-725
+270
+688
+328
+733
 pop-lev-1
 sum [pop-0] of locales with [alert-level = 1]
 0
@@ -4405,10 +4405,10 @@ sum [pop-0] of locales with [alert-level = 1]
 11
 
 MONITOR
-332
-680
-390
-725
+333
+688
+391
+733
 pop-lev-2
 sum [pop-0] of locales with [alert-level = 2]
 0
@@ -4417,9 +4417,9 @@ sum [pop-0] of locales with [alert-level = 2]
 
 MONITOR
 395
-680
+688
 454
-725
+733
 pop-lev-3
 sum [pop-0] of locales with [alert-level = 3]
 0
@@ -4427,10 +4427,10 @@ sum [pop-0] of locales with [alert-level = 3]
 11
 
 MONITOR
-459
-679
-518
-724
+460
+687
+519
+732
 pop-lev-4
 sum [pop-0] of locales with [alert-level = 4]
 0
@@ -4438,10 +4438,10 @@ sum [pop-0] of locales with [alert-level = 4]
 11
 
 MONITOR
-269
-731
-327
-776
+270
+739
+328
+784
 n-lev-1
 count locales with [alert-level = 1]
 0
@@ -4449,10 +4449,10 @@ count locales with [alert-level = 1]
 11
 
 MONITOR
-332
-731
-390
-776
+333
+739
+391
+784
 n-lev-2
 count locales with [alert-level = 2]
 0
@@ -4461,9 +4461,9 @@ count locales with [alert-level = 2]
 
 MONITOR
 395
-731
+739
 454
-776
+784
 n-lev-3
 count locales with [alert-level = 3]
 0
@@ -4471,10 +4471,10 @@ count locales with [alert-level = 3]
 11
 
 MONITOR
-459
-730
-518
-775
+460
+738
+519
+783
 n-lev-4
 count locales with [alert-level = 4]
 0
@@ -4869,10 +4869,10 @@ days
 HORIZONTAL
 
 INPUTBOX
-215
-590
-320
-665
+210
+607
+315
+682
 script
 0 4\n35 3\n56 2
 1
