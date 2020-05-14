@@ -111,6 +111,7 @@ globals [
   control-levels    ;; list by alert-level of relative suppression of R
   flow-levels       ;; list by alert-level of relative rates of movement along connections
   trigger-levels    ;; list by alert-level of positive testing rate
+  scripted-events   ;; list of timestamp alert-level changes
 
   total-cases       ;; clinical cases
   total-infected    ;; all cases
@@ -149,6 +150,7 @@ to setup
   set control-levels initialise-control-levels
   set flow-levels read-from-string alert-levels-flow
   set trigger-levels read-from-string alert-level-triggers
+  set scripted-events map [x -> map [y -> read-from-string y] split-string x " "] split-string script "\n"
 
   setup-locales
   setup-levels
@@ -364,11 +366,22 @@ to run-one-day [burn-in?]
   update-testing
 
   if not burn-in? [
-    ;; change alert levels
-    if ticks >= (start-lifting-quarantine + start-time) and
-    ticks >= time-horizon and
-    (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
-      change-alert-levels
+    ifelse alert-policy = "scripted" [
+      let elapsed-time ticks - start-time
+      let events filter [x -> item 0 x = elapsed-time] scripted-events
+      if debug? [ show events ]
+      if length events > 0 [
+        set initial-alert-level last first events
+        change-alert-levels
+      ]
+    ]
+    [
+      ;; change alert levels
+      if ticks >= (start-lifting-quarantine + start-time) and
+      ticks >= time-horizon and
+      (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
+        change-alert-levels
+      ]
     ]
   ]
   redraw

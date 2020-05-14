@@ -111,6 +111,7 @@ globals [
   control-levels    ;; list by alert-level of relative suppression of R
   flow-levels       ;; list by alert-level of relative rates of movement along connections
   trigger-levels    ;; list by alert-level of positive testing rate
+  scripted-events   ;; list of timestamp alert-level changes
 
   total-cases       ;; clinical cases
   total-infected    ;; all cases
@@ -149,6 +150,7 @@ to setup
   set control-levels initialise-control-levels
   set flow-levels read-from-string alert-levels-flow
   set trigger-levels read-from-string alert-level-triggers
+  set scripted-events map [x -> map [y -> read-from-string y] split-string x " "] split-string script "\n"
 
   setup-locales
   setup-levels
@@ -364,11 +366,22 @@ to run-one-day [burn-in?]
   update-testing
 
   if not burn-in? [
-    ;; change alert levels
-    if ticks >= (start-lifting-quarantine + start-time) and
-    ticks >= time-horizon and
-    (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
-      change-alert-levels
+    ifelse alert-policy = "scripted" [
+      let elapsed-time ticks - start-time
+      let events filter [x -> item 0 x = elapsed-time] scripted-events
+      if debug? [ show events ]
+      if length events > 0 [
+        set initial-alert-level last first events
+        change-alert-levels
+      ]
+    ]
+    [
+      ;; change alert levels
+      if ticks >= (start-lifting-quarantine + start-time) and
+      ticks >= time-horizon and
+      (ticks - start-lifting-quarantine - start-time) mod time-horizon = 0 [
+        change-alert-levels
+      ]
     ]
   ]
   redraw
@@ -4315,7 +4328,7 @@ SWITCH
 213
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
@@ -4479,8 +4492,8 @@ CHOOSER
 407
 alert-policy
 alert-policy
-"static" "local" "global-mean" "global-max" "local-random"
-0
+"static" "local" "global-mean" "global-max" "scripted" "local-random"
+4
 
 MONITOR
 1054
@@ -4861,7 +4874,7 @@ CHOOSER
 control-scenario
 control-scenario
 "optimistic" "realistic" "pessimistic" "other"
-3
+1
 
 MONITOR
 175
@@ -5147,6 +5160,17 @@ response-time
 1
 days
 HORIZONTAL
+
+INPUTBOX
+215
+590
+320
+665
+script
+0 4\n35 3\n56 2
+1
+1
+String
 
 @#$#@#$#@
 ## WHAT IS IT?
