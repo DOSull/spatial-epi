@@ -166,6 +166,7 @@ to setup
   enact-alert-levels
 
   update-statistics
+  set start-time ticks
 
   if not netlogo-web? and log-all-locales? [
     initialise-logging
@@ -174,7 +175,6 @@ to setup
   set labels-on? true
   redraw
   paint-land green 4
-  set start-time ticks
 end
 
 
@@ -353,18 +353,6 @@ end
 to run-one-day [burn-in?]
   reset-locale-counts
 
-  ;; add some new cases if appropriate
-  add-arrivals random-poisson new-exposures-arriving
-
-  ask locales [ set-control-level ]
-  ;; spread infection by creating new cases
-  instantiate-exposures ticks
-  ;; progress all cases
-  progress-cases (ticks + 1)
-
-  update-statistics
-  update-testing
-
   if not burn-in? [
     ifelse alert-policy = "scripted" [
       let elapsed-time ticks - start-time
@@ -384,6 +372,19 @@ to run-one-day [burn-in?]
       ]
     ]
   ]
+
+  ;; add some new cases if appropriate
+  add-arrivals random-poisson new-exposures-arriving
+
+  ask locales [ set-control-level ]
+  ;; spread infection by creating new cases
+  instantiate-exposures ticks
+  ;; progress all cases
+  progress-cases (ticks + 1)
+
+  update-statistics
+  update-testing
+
   redraw
 end
 
@@ -1499,6 +1500,7 @@ to-report log-file-header
   set parameters lput join-list (list "setup.method" setup-method) "," parameters
   set parameters lput join-list (list "gravity.weight?" gravity-weight?) "," parameters
   set parameters lput join-list (list "max-connection.distance" max-connection-distance) "," parameters
+  set parameters lput join-list (list "start.time" start-time) "," parameters
 
   set parameters lput join-list (list "initial.infected" initial-infected) "," parameters
   set parameters lput join-list (list "initial.alert.level" initial-alert-level) "," parameters
@@ -4315,7 +4317,7 @@ seed
 seed
 0
 100
-30.0
+8.0
 1
 1
 NIL
@@ -4468,7 +4470,7 @@ pop-test-rate
 pop-test-rate
 0
 0.002
-0.001
+0.0
 0.0001
 1
 NIL
@@ -4493,7 +4495,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "scripted" "local-random"
-1
+0
 
 MONITOR
 1054
@@ -4563,7 +4565,7 @@ start-lifting-quarantine
 start-lifting-quarantine
 0
 56
-14.0
+7.0
 1
 1
 days
@@ -4673,7 +4675,7 @@ INPUTBOX
 723
 860
 log-folder
-NZ-static-local-scripted
+NZ-static-local-scripted-branching
 1
 0
 String
@@ -4860,7 +4862,7 @@ new-exposures-arriving
 new-exposures-arriving
 0
 50
-0.0
+5.0
 0.1
 1
 NIL
@@ -5033,7 +5035,7 @@ CHOOSER
 setup-method
 setup-method
 "NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
-1
+0
 
 BUTTON
 439
@@ -5140,7 +5142,7 @@ time-to-detection
 time-to-detection
 0
 10
-6.0
+10.0
 0.01
 1
 NIL
@@ -5874,7 +5876,7 @@ NetLogo 6.1.0
       <value value="&quot;NZ TAs random cases&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="start-lifting-quarantine">
-      <value value="14"/>
+      <value value="7"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-all-locales?">
       <value value="true"/>
@@ -5886,8 +5888,9 @@ NetLogo 6.1.0
       <value value="&quot;other&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="alert-policy">
-      <value value="&quot;scripted&quot;"/>
       <value value="&quot;static&quot;"/>
+      <value value="&quot;global-max&quot;"/>
+      <value value="&quot;global-mean&quot;"/>
       <value value="&quot;local&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="gravity-weight?">
@@ -5906,7 +5909,7 @@ NetLogo 6.1.0
       <value value="&quot;0 4\n35 3\n49 2&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="log-folder">
-      <value value="&quot;NZ-static-local-scripted&quot;"/>
+      <value value="&quot;NZ-static-local-scripted-branching&quot;"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="initial-alert-level">
       <value value="4"/>

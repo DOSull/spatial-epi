@@ -126,6 +126,7 @@ to setup
   enact-alert-levels
 
   update-statistics
+  set start-time ticks
 
   if not netlogo-web? and log-all-locales? [
     initialise-logging
@@ -134,8 +135,6 @@ to setup
   set labels-on? true
   redraw
   paint-land green 4
-
-  set start-time ticks
 end
 
 ;; main initialisation of locales
@@ -302,24 +301,13 @@ end
 
 
 to run-one-day [burn-in?]
-  ;; add some new cases if appropriate
-  add-arrivals random-poisson new-exposures-arriving
-
-  ask locales [
-    set-control-level
-    calculate-flows
-    spread
-  ]
-
-  update-statistics
-  update-testing
-
   if not burn-in? [
     ifelse alert-policy = "scripted" [
       let elapsed-time ticks - start-time
       let events filter [x -> item 0 x = elapsed-time] scripted-events
       if debug? [ show events ]
       if length events > 0 [
+        show "Changing alert level to " show last first events
         set initial-alert-level last first events
         change-alert-levels
       ]
@@ -333,6 +321,18 @@ to run-one-day [burn-in?]
       ]
     ]
   ]
+
+  ;; add some new cases if appropriate
+  add-arrivals random-poisson new-exposures-arriving
+
+  ask locales [
+    set-control-level
+    calculate-flows
+    spread
+  ]
+
+  update-statistics
+  update-testing
   redraw
 end
 
@@ -1104,6 +1104,7 @@ to-report log-file-header
   set parameters lput join-list (list "setup.method" setup-method) "," parameters
   set parameters lput join-list (list "gravity.weight?" gravity-weight?) "," parameters
   set parameters lput join-list (list "max-connection.distance" max-connection-distance) "," parameters
+  set parameters lput join-list (list "start.time" start-time) "," parameters
 
   set parameters lput join-list (list "initial.infected" initial-infected) "," parameters
   set parameters lput join-list (list "initial.alert.level" initial-alert-level) "," parameters
@@ -4306,7 +4307,7 @@ CHOOSER
 421
 alert-policy
 alert-policy
-"static" "local" "global-mean" "global-max" "local-random"
+"static" "local" "global-mean" "global-max" "scripted" "local-random"
 0
 
 MONITOR
@@ -5233,6 +5234,126 @@ NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="NZ-static-local-scripted" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="new-exposures-arriving">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-seed?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="population">
+      <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initialise-by-burn-in?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="false-negative-rate">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-control">
+      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.25 0.16]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="time-horizon">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[0.2 0.1 0.05 0.025]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-method">
+      <value value="&quot;NZ DHBs random cases&quot;"/>
+      <value value="&quot;NZ TAs random cases&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="inf-to-rec">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="inf-test-rate">
+      <value value="0.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="rel-inf-presymp">
+      <value value="0.15"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="start-lifting-quarantine">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="control-scenario">
+      <value value="&quot;other&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="2000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-all-locales?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;static&quot;"/>
+      <value value="&quot;global-max&quot;"/>
+      <value value="&quot;global-mean&quot;"/>
+      <value value="&quot;local&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymp-to-inf">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="gravity-weight?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-test-rate">
+      <value value="0.001"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-connection-distance">
+      <value value="600"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="script">
+      <value value="&quot;0 4\n35 3\n49 2&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-folder">
+      <value value="&quot;NZ-static-local-scripted-SEIR&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-alert-level">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exp-to-presymp">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0">
+      <value value="2.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="response-time">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-level-triggers">
+      <value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
