@@ -385,6 +385,18 @@ end
 ;; In all cases alert levels are 'sticky' downwards, i.e. they won't jump immediately
 ;; to the lowest possible level consistent positive tesing rates
 to change-alert-levels
+  if alert-policy = "scripted" [ ;; there will be no changes unless user has changed the initial-alert-level slider
+    ask locales [
+      let new-level initial-alert-level
+      if new-level != alert-level [
+        set alert-level new-level
+        set alert-level-changes alert-level-changes + 1
+      ]
+    ]
+    enact-alert-levels
+    stop
+  ]
+
   if alert-policy = "static" [ ;; there will be no changes unless user has changed the initial-alert-level slider
     ask locales [
       let new-level initial-alert-level
@@ -4308,7 +4320,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "scripted" "local-random"
-4
+3
 
 MONITOR
 1398
@@ -4561,11 +4573,11 @@ Model parameters not tuned to any specific location.\nExercise caution in using 
 CHOOSER
 9
 10
-197
+228
 55
 setup-method
 setup-method
-"NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
+"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Costa Rica"
 0
 
 SLIDER
@@ -4828,7 +4840,7 @@ SWITCH
 164
 initialise-by-burn-in?
 initialise-by-burn-in?
-0
+1
 1
 -1000
 
@@ -5057,7 +5069,7 @@ NetLogo 6.1.0
       <value value="4"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="exp-to-presymp">
-      <value value="1.0"/>
+      <value value="1"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="R0">
       <value value="2.5"/>

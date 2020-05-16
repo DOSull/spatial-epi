@@ -5046,7 +5046,7 @@ CHOOSER
 58
 setup-method
 setup-method
-"NZ DHBs random cases" "NZ TAs random cases" "NZ DHBs from Apr 15 MoH data" "Random landscape" "Costa Rica"
+"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Costa Rica"
 0
 
 BUTTON
