@@ -186,6 +186,11 @@ to setup-locales
     setup-connections-parametrically
     stop
   ]
+  if setup-method = "Initialise from input boxes" [
+    setup-locales-from-string input-locales
+    setup-connections-from-string input-connections
+    stop
+  ]
   if position "NZ DHBs" setup-method = 0 [
     setup-locales-from-string get-locales-data "DHBs"
     setup-connections-from-string get-connections-data true
@@ -340,12 +345,12 @@ to go
 
   ;; log outcomes to file
   if not netlogo-web? and log-all-locales? [
-    file-open full-file-name
-    ask locales [
-      file-print output-locale
-    ]
-    file-close
-  ]
+;    file-open full-file-name
+;    ask locales [
+;      file-print output-locale
+;    ]
+;    file-close
+;  ]
   tick
 end
 
@@ -4558,10 +4563,10 @@ days
 HORIZONTAL
 
 SWITCH
-548
-760
-719
-793
+541
+752
+712
+785
 log-all-locales?
 log-all-locales?
 1
@@ -4682,10 +4687,10 @@ count locales with [alert-level = 4]
 11
 
 INPUTBOX
-538
-800
-723
-860
+531
+792
+716
+852
 log-folder
 realistic-other
 1
@@ -4721,10 +4726,10 @@ NIL
 1
 
 BUTTON
-890
-758
-1016
-792
+728
+798
+885
+832
 NIL
 toggle-labels
 NIL
@@ -4928,10 +4933,10 @@ km
 HORIZONTAL
 
 SWITCH
-1288
-809
-1413
-842
+535
+858
+660
+891
 debug?
 debug?
 1
@@ -4996,9 +5001,9 @@ mean [infections-caused] of all-cases with [ticks - t-0 > 15]
 
 BUTTON
 891
-800
+796
 1044
-835
+831
 show-current-clusters
 revert-to-geographic-layout\nshow-clusters
 NIL
@@ -5012,10 +5017,10 @@ NIL
 1
 
 BUTTON
-731
-801
-887
-835
+891
+758
+1044
+792
 back-to-geography
 revert-to-geographic-layout
 NIL
@@ -5029,10 +5034,10 @@ NIL
 1
 
 SWITCH
-1054
-796
-1246
-829
+1052
+797
+1244
+830
 colour-by-cluster?
 colour-by-cluster?
 1
@@ -5046,7 +5051,7 @@ CHOOSER
 58
 setup-method
 setup-method
-"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Costa Rica"
+"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Initialise from input boxes" "Costa Rica"
 0
 
 BUTTON
@@ -5182,6 +5187,28 @@ INPUTBOX
 665
 script
 0 4\n35 3\n49 2
+1
+1
+String
+
+INPUTBOX
+726
+841
+1000
+938
+input-locales
+ID name x y pop\n0 A 0 0 100000\n1 B 1000 0 200000\n2 C 500 866 300000
+1
+1
+String
+
+INPUTBOX
+1007
+840
+1255
+939
+input-connections
+ID1 ID2 weight\n0 1 1\n1 0 2\n0 2 1\n1 2 3 \n2 0 4
 1
 1
 String

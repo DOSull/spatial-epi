@@ -145,6 +145,11 @@ to setup-locales
     setup-connections-parametrically
     stop
   ]
+  if setup-method = "Initialise from input boxes" [
+    setup-locales-from-string input-locales
+    setup-connections-from-string input-connections
+    stop
+  ]
   if position "NZ DHBs" setup-method = 0 [
     setup-locales-from-string get-locales-data "DHBs"
     setup-connections-from-string get-connections-data true
@@ -4067,7 +4072,7 @@ initial-infected
 initial-infected
 0
 10000
-650.0
+2000.0
 10
 1
 NIL
@@ -4117,7 +4122,7 @@ SWITCH
 244
 use-seed?
 use-seed?
-0
+1
 1
 -1000
 
@@ -4219,7 +4224,7 @@ INPUTBOX
 291
 602
 alert-levels-control
-pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.25 0.16]
+pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]
 1
 1
 String
@@ -4244,7 +4249,7 @@ initial-alert-level
 initial-alert-level
 1
 4
-2.0
+4.0
 1
 1
 NIL
@@ -4317,7 +4322,7 @@ CHOOSER
 alert-policy
 alert-policy
 "static" "local" "global-mean" "global-max" "scripted" "local-random"
-4
+1
 
 MONITOR
 1398
@@ -4494,10 +4499,10 @@ count locales with [alert-level = 4]
 INPUTBOX
 529
 796
-714
-856
+711
+865
 log-folder
-foo
+NZ-static-local-scripted-SEIR-realistic
 1
 0
 String
@@ -4568,14 +4573,14 @@ Model parameters not tuned to any specific location.\nExercise caution in using 
 1
 
 CHOOSER
-9
+5
 10
-197
+200
 55
 setup-method
 setup-method
-"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Costa Rica"
-0
+"NZ DHBs random cases" "NZ TAs random cases" "Random landscape" "Initialise from input boxes" "Costa Rica"
+3
 
 SLIDER
 6
@@ -4703,7 +4708,7 @@ CHOOSER
 control-scenario
 control-scenario
 "pessimistic" "realistic" "optimistic" "other"
-3
+1
 
 TEXTBOX
 335
@@ -4790,13 +4795,13 @@ gravity-weight?
 -1000
 
 SWITCH
-911
-802
-1033
-835
+1265
+804
+1387
+837
 debug?
 debug?
-0
+1
 1
 -1000
 
@@ -4884,7 +4889,29 @@ INPUTBOX
 315
 682
 script
-0 4\n35 3\n56 2
+0 4\n35 3\n49 2
+1
+1
+String
+
+INPUTBOX
+728
+801
+1002
+898
+input-locales
+ID name x y pop\n0 A 0 0 100000\n1 B 1000 0 200000\n2 C 500 866 300000
+1
+1
+String
+
+INPUTBOX
+1009
+800
+1257
+899
+input-connections
+ID1 ID2 weight\n0 1 1\n1 0 2\n0 2 1\n1 2 3 \n2 0 4
 1
 1
 String
@@ -4966,124 +4993,124 @@ NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-<experiment name="NZ-static-local-scripted" repetitions="1" runMetricsEveryStep="true">
-<setup>setup</setup>
-<go>go</go>
-<metric>count turtles</metric>
-<enumeratedValueSet variable="new-exposures-arriving">
-<value value="0"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="use-seed?">
-<value value="false"/>
-</enumeratedValueSet>
-<steppedValueSet variable="seed" first="1" step="1" last="30"/>
-<enumeratedValueSet variable="population">
-<value value="5000000"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="initialise-by-burn-in?">
-<value value="true"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="false-negative-rate">
-<value value="0.05"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="alert-levels-control">
-<value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="cfr-0">
-<value value="0.01"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="time-horizon">
-<value value="7"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="cfr-1">
-<value value="0.02"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="alert-levels-flow">
-<value value="&quot;[0.2 0.1 0.05 0.025]&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="setup-method">
-<value value="&quot;NZ DHBs random cases&quot;"/>
-<value value="&quot;NZ TAs random cases&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="inf-to-rec">
-<value value="0.2"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="inf-test-rate">
-<value value="0.9"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="rel-inf-presymp">
-<value value="0.5"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="start-lifting-quarantine">
-<value value="7"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="icu-cap">
-<value value="500"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="control-scenario">
-<value value="&quot;other&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="initial-infected">
-<value value="2000"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="log-all-locales?">
-<value value="true"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="alert-policy">
-<value value="&quot;static&quot;"/>
-<value value="&quot;global-max&quot;"/>
-<value value="&quot;global-mean&quot;"/>
-<value value="&quot;local&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="presymp-to-inf">
-<value value="0.66667"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="gravity-weight?">
-<value value="true"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="pop-test-rate">
-<value value="0.001"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="p-icu">
-<value value="0.0125"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="pop-sd-multiplier">
-<value value="0.75"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="max-connection-distance">
-<value value="600"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="p-hosp">
-<value value="0.05"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="script">
-<value value="&quot;0 4\n35 3\n49 2&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="log-folder">
-<value value="&quot;NZ-static-local-scripted-SEIR&quot;"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="initial-alert-level">
-<value value="4"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="exp-to-presymp">
-<value value="1.0"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="R0">
-<value value="2.5"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="debug?">
-<value value="false"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="num-locales">
-<value value="20"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="response-time">
-<value value="7"/>
-</enumeratedValueSet>
-<enumeratedValueSet variable="alert-level-triggers">
-<value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
-</enumeratedValueSet>
-</experiment>
+  <experiment name="NZ-static-local-scripted" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="new-exposures-arriving">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="use-seed?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="seed" first="1" step="1" last="30"/>
+    <enumeratedValueSet variable="population">
+      <value value="5000000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initialise-by-burn-in?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="false-negative-rate">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-control">
+      <value value="&quot;pessimistic [1 0.8 0.6 0.36]\nrealistic [1 0.72 0.52 0.32]\noptimistic [1 0.64 0.44 0.28]\nother [1 0.7 0.4 0.16]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-0">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="time-horizon">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="cfr-1">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-levels-flow">
+      <value value="&quot;[0.2 0.1 0.05 0.025]&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="setup-method">
+      <value value="&quot;NZ DHBs random cases&quot;"/>
+      <value value="&quot;NZ TAs random cases&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="inf-to-rec">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="inf-test-rate">
+      <value value="0.9"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="rel-inf-presymp">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="start-lifting-quarantine">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="icu-cap">
+      <value value="500"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="control-scenario">
+      <value value="&quot;realistic&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-infected">
+      <value value="2000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-all-locales?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-policy">
+      <value value="&quot;static&quot;"/>
+      <value value="&quot;global-max&quot;"/>
+      <value value="&quot;global-mean&quot;"/>
+      <value value="&quot;local&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="presymp-to-inf">
+      <value value="0.66667"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="gravity-weight?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-test-rate">
+      <value value="0.001"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-icu">
+      <value value="0.0125"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="pop-sd-multiplier">
+      <value value="0.75"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-connection-distance">
+      <value value="600"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="p-hosp">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="script">
+      <value value="&quot;0 4\n35 3\n49 2&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="log-folder">
+      <value value="&quot;NZ-static-local-scripted-SEIR-realistic&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="initial-alert-level">
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="exp-to-presymp">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="R0">
+      <value value="2.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-locales">
+      <value value="20"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="response-time">
+      <value value="7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alert-level-triggers">
+      <value value="&quot;[0.0001 0.00025 0.0005 1]&quot;"/>
+    </enumeratedValueSet>
+  </experiment>
 </experiments>
 @#$#@#$#@
 @#$#@#$#@
