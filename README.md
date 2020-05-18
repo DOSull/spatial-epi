@@ -21,6 +21,8 @@ The core operation of this model is based on maintaining a time-sorted list of n
 Because the model is spatially explicit, new cases may arise in the same locale or with low probability in a connected other location. Because the parent-case of each case during a model run is known, it is possible to assemble clusters of infection chains and display these in the model.
 
 ### Example results
+**Note the results discussed in this section may not be the same as those presented in any related published work (or even in the folders on this repo). These are just presented to give an indication of interesting aspects of system bahaviour that can be explored with a model of this kind.**
+
 The desktop version of the model, which runs in the [Netlogo desktop app](http://ccl.northwestern.edu/netlogo/) can log results for locales and cases over time during a model run for subsequent analysis.
 
 #### Population in different lockdown levels by number of locales
