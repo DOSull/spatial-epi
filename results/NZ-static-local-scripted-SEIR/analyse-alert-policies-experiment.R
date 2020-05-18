@@ -143,8 +143,8 @@ eradication.times <- data.all %>%
   arrange(alert.policy, setup.method)
 
 ggplot(eradication.times, aes(x=alert.policy)) +
-  geom_boxplot(aes(y=t)) +
-  facet_wrap( ~ setup.method, nrow=1) +
+  geom_boxplot(aes(y=t, fill=setup.method)) +
+#  facet_wrap( ~ setup.method, nrow=1) +
   xlab('Alert policy') + 
   ylab('Time to eradication') +
   ggtitle('SEIR model, 2000 random cases')
