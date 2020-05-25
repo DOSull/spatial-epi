@@ -49,10 +49,10 @@ ggplot(dhb.totals, aes(x=t)) +
   facet_wrap(~ alert.policy, nrow=2, labeller=(.cols=label_both)) +
   xlab('Days') +
   ylab('New symptomatic cases per day') + 
-  ggtitle('SEIR model, NZ DHBs, 2000 random cases')
+  ggtitle('SIR model, NZ DHBs, 2000 random cases')
 
 # ggsave('seir-nz-dhbs-infected-time-series-by-alert-policy-log-scale.png')
-ggsave('seir-nz-dhbs-infected-time-series-by-alert-policy.png')
+ggsave('sir-nz-dhbs-infected-time-series-by-alert-policy.png')
 
 all.t.alert.policy.combos <- crossing(t=0:max(dhb.data$t),
                                          alert.level=1:4,
@@ -71,14 +71,14 @@ dhb.alert.level.totals <- dhb.data %>%
   arrange(t)
 
 ggplot(dhb.alert.level.totals, aes(x=t)) +
-  geom_step(aes(y=total.pop, group=seed), lwd=0.1, alpha=0.75) +
+  geom_step(aes(y=total.pop / 1000000, group=seed), lwd=0.1, alpha=0.75) +
   facet_grid(alert.level ~ alert.policy, 
              labeller=labeller(.rows=label_both, .cols=label_both)) +
-  ylab('Population') +
+  ylab('Population, millions') +
   xlab('Days') +
-  ggtitle('SEIR model, NZ DHBs, 2000 random cases')
+  ggtitle('SIR model, NZ DHBs, 2000 random cases')
 
-ggsave('seir-nz-dhbs-population-in-alert-levels-by-alert-policy.png')
+ggsave('sir-nz-dhbs-population-in-alert-levels-by-alert-policy.png')
 
 
 
@@ -104,9 +104,9 @@ ggplot(ta.totals, aes(x=t)) +
   facet_wrap(~ alert.policy, nrow=2, labeller=(.cols=label_both)) +
   xlab('Days') +
   ylab('New symptomatic cases per day') + 
-  ggtitle('SEIR model, NZ TAs, 2000 random cases')
+  ggtitle('SIR model, NZ TAs, 2000 random cases')
 
-ggsave('seir-nz-tas-infected-time-series-by-alert-policy.png')
+ggsave('sir-nz-tas-infected-time-series-by-alert-policy.png')
 
 all.t.alert.policy.combos <- crossing(t=0:max(ta.data$t),
                                       alert.level=1:4,
@@ -125,14 +125,14 @@ ta.alert.level.totals <- ta.data %>%
   arrange(t)
 
 ggplot(ta.alert.level.totals, aes(x=t)) +
-  geom_step(aes(y=total.pop, group=seed), lwd=0.1, alpha=0.75) +
+  geom_step(aes(y=total.pop / 1000000, group=seed), lwd=0.1, alpha=0.75) +
   facet_grid(alert.level ~ alert.policy, 
              labeller=labeller(.rows=label_both, .cols=label_both)) +
-  ylab('Population') +
+  ylab('Population. millions') +
   xlab('Days') +
-  ggtitle('SEIR model, NZ TAs, 2000 random cases')
+  ggtitle('SIR model, NZ TAs, 2000 random cases')
 
-ggsave('seir-nz-tas-population-in-alert-levels-by-alert-policy.png')
+ggsave('sir-nz-tas-population-in-alert-levels-by-alert-policy.png')
 
 
 
@@ -149,8 +149,8 @@ ggplot(eradication.times, aes(x=alert.policy)) +
 #  facet_wrap( ~ setup.method, nrow=1) +
   xlab('Alert policy') + 
   ylab('Time to eradication') +
-  ggtitle('SEIR model, NZ TAs, 2000 random cases')
+  ggtitle('SIR model, NZ TAs, 2000 random cases')
 
-ggsave('seir-nz-eradication-times.png')
+ggsave('sir-nz-eradication-times.png')
 
 

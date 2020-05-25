@@ -350,7 +350,7 @@ to go
 ;      file-print output-locale
 ;    ]
 ;    file-close
-;  ]
+  ]
   tick
 end
 
