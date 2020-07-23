@@ -7,7 +7,7 @@ Three sets of models are available here as detailed below.
 
 The [distributed stochastic branching model](#distibuted-stochastic-branching-model) and [distributed SEIR model](#distributed-seir-models) have been published as
 
-O’Sul[livan D, M Gahegan, DJ Exeter, and B Adams. 2020 (online first). Spatially explicit models for exploring COVID 19 lockdown strategies](https://dx.doi.org/10.1111/tgis.12660). Transactions in GIS doi: 10.1111/tgis.12660
+O’Sullivan D, M Gahegan, DJ Exeter, and B Adams. 2020 (online first). [Spatially explicit models for exploring COVID 19 lockdown strategies](https://dx.doi.org/10.1111/tgis.12660). Transactions in GIS doi: 10.1111/tgis.12660
 
 ## Distributed stochastic branching model
 This model is a **spatially distributed** (i.e. regionalised) reimplementation of the stochastic [branching process](https://en.wikipedia.org/wiki/Branching_process) model described in
