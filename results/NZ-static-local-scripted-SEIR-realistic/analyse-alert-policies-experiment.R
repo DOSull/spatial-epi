@@ -144,13 +144,39 @@ eradication.times <- data.all %>%
   ungroup() %>%
   arrange(alert.policy, setup.method)
 
+eradication.times <- eradication.times%>%
+  mutate(alert.policy = as.factor(as.character(alert.policy)))
+
 ggplot(eradication.times, aes(x=alert.policy)) +
   geom_boxplot(aes(y=t.max, fill=setup.method)) +
 #  facet_wrap( ~ setup.method, nrow=1) +
   xlab('Alert policy') + 
-  ylab('Time to eradication') +
+  ylab('Time to elimination') +
   ggtitle('SIR model, NZ TAs, 2000 random cases')
 
-ggsave('sir-nz-eradication-times.png')
+ggsave('sir-nz-elimination-times.png')
 
 
+ta.totals <- ta.data %>%
+  select(t, who, seed, alert.policy, new.infected, alert.level) %>%
+  dplyr::group_by(t, seed, alert.policy) %>%
+  summarise_at(vars(-group_cols(), new.infected), sum) %>%
+  ungroup() %>%
+  select(-alert.level) %>%
+  dplyr::group_by(t, alert.policy) %>%
+  summarise_at(vars(-group_cols(), new.infected), list(~ mean(.), ~ min(.), ~ max(.))) %>%
+  ungroup() %>%
+  arrange(alert.policy)
+
+ta.totals <- ta.totals %>%
+  mutate(alert.policy = as.factor(as.character(alert.policy)))
+
+ggplot(ta.totals, aes(x=t)) +
+  geom_ribbon(aes(ymin=new.infected_min, ymax=new.infected_max), alpha=0.35) +
+  geom_line(aes(y=new.infected_mean), lwd=0.2) +
+  facet_wrap(~ alert.policy, nrow=1, labeller=(.cols=label_both)) +
+  xlab('Days') +
+  ylab('New symptomatic cases per day') + 
+  ggtitle('SIR model, NZ TAs, 2000 random cases')
+
+ggsave('results-1.png')

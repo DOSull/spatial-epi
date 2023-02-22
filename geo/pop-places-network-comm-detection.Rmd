@@ -34,7 +34,7 @@ Make an attribute only data table from the pop places
 ```{r}
 pop_places.id <- pop_places.m %>%
   st_drop_geometry() %>%
-  select(gid, name, pop, x, y)
+  dplyr::select(gid, name, pop, x, y)
 ```
 
 Read the distances calculated over the network using QNEAT3 in QGIS

@@ -14,3 +14,7 @@ other-stuff/
 staging-area/
 test/
 old-versions/
+.Rproj.user
+vax/
+delta/
+**/*logging*.*

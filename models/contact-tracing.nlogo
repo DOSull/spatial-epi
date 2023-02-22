@@ -31,6 +31,18 @@ to setup
   ]
 end
 
+to setup-delta
+  clear-all
+  reset-ticks
+  set use-seed? true
+  set seed 45
+  set p-detection-per-day 0
+  set p-contact-detection 0
+  set lockdown-control 1
+  create-cases 1 [
+    initialise-case ticks p-clinical nobody
+  ]
+end
 
 to initialise-case [t p-clin parent]
   if debug? [ show word "New case at t " t ]
@@ -198,31 +210,23 @@ end
 ; distributed random variables. Computers and Mathematics with
 ; Applications 6, 305-315.
 ; should be a bit quicker because it only needs ~ np random-float calls
-to-report random-binomial [n p]
-  if p = 0 [ report 0 ]
-  if p = 1 [ report n ]
-  let y 0
-  let x 0
-  ; since O(np) use fact that Bin(n, p) = n - Bin(n, 1-p)
-  ifelse p < 0.5 [
-    let c ln (1 - p)
-    loop [
-      set y y + int (ln (random-float 1) / c) + 1
-      ifelse y < n
-      [ set x x + 1 ]
-      [ report x ]
-    ]
-  ]
-  [
-    let c ln p
-    loop [
-      set y y + int (ln (random-float 1) / c) + 1
-      ifelse y < n
-      [ set x x + 1 ]
-      [ report n - x ]
-    ]
-  ]
-end
+;to-report binomial [n p]
+;  ; need to trap p = 0 and p = 1
+;  if p = 1 [ report n ]
+;  if p = 0 [ report 0 ]
+;  let ln-q ln (1 - p)
+;  let x 0
+;  let s 0
+;  ; also need to avoid x = n
+;  while [x < n] [
+;    set s s + ln (random-float 1) / (n - x)
+;    if s < ln-q [
+;      report x
+;    ]
+;    set x x + 1
+;  ]
+;  report x
+;end
 
 ;; https://stackoverflow.com/questions/33611708/random-number-generator-with-generalized-pareto-distribution-and-weilbull-distri
 to-report random-weibull [shp scale]
@@ -236,14 +240,14 @@ to-report cumulative-weibull [shp scale x]
   report 1 - 1 / exp ((x / scale) ^ shp)
 end
 
-to-report weibull-in-interval [shp scale t1-t2]
-  report cumulative-weibull shp scale (item 1 t1-t2) - cumulative-weibull shp scale (item 0 t1-t2)
-end
+;to-report weibull-in-interval [shp scale t1-t2]
+;  report cumulative-weibull shp scale (item 1 t1-t2) - cumulative-weibull shp scale (item 0 t1-t2)
+;end
 
-to-report dweibull [x shp scale]
-  if x <= 0 [ report 0 ]
-  report (shp / scale) * ((x / scale) ^ (shp - 1)) / exp ((x / scale) ^ shp)
-end
+;to-report dweibull [x shp scale]
+;  if x <= 0 [ report 0 ]
+;  report (shp / scale) * ((x / scale) ^ (shp - 1)) / exp ((x / scale) ^ shp)
+;end
 
 to-report weibull-scale-given-shape
   report mode * (w-shape / (w-shape - 1)) ^ (1 / w-shape)
@@ -319,7 +323,7 @@ R-clinical
 R-clinical
 0
 10
-3.0
+6.0
 0.001
 1
 NIL
@@ -344,7 +348,7 @@ SLIDER
 12
 264
 202
-298
+297
 p-clinical
 p-clinical
 0
@@ -364,7 +368,7 @@ mode
 mode
 0
 10
-4.86
+4.0
 0.01
 1
 NIL
@@ -422,7 +426,7 @@ lockdown-control
 lockdown-control
 0
 1
-0.72
+1.0
 0.01
 1
 NIL
@@ -437,7 +441,7 @@ seed
 seed
 0
 100
-51.0
+45.0
 1
 1
 NIL
@@ -467,7 +471,7 @@ SWITCH
 174
 use-seed?
 use-seed?
-1
+0
 1
 -1000
 
@@ -491,7 +495,7 @@ p-detection-per-day
 p-detection-per-day
 0
 1
-0.17
+0.0
 0.01
 1
 NIL
@@ -506,7 +510,7 @@ p-contact-detection
 p-contact-detection
 0
 1
-0.9
+0.0
 0.01
 1
 NIL
@@ -516,7 +520,7 @@ SLIDER
 643
 381
 827
-415
+414
 isolation-control
 isolation-control
 0
